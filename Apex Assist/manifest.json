@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "Apex Assist",
+  "version": "0.1.0",
+  "description": "Automates quizzes and tests on Apex Learning using AI.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png"
+    }
+  },
+  "options_page": "options/options.html",
+  "background": {
+    "service_worker": "scripts/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.course.apexlearning.com/*", "*://*.apexvs.com/*"],
+      "js": ["scripts/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": [
+    "storage",
+    "scripting",
+    "activeTab",
+    "webRequest",
+    "commands"
+  ],
+  "commands": {
+    "toggle-automation": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+A",
+        "mac": "Command+Shift+A"
+      },
+      "description": "Toggle automation on/off"
+    }
+  },
+  "host_permissions": [
+    "*://*.course.apexlearning.com/*",
+    "*://*.apexvs.com/*"
+  ]
+}
