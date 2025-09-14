@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (provider === 'gemini') {
       modelSelect.innerHTML = `
         <option value="gemini-2.0-flash">Gemini 2.0 Flash (Default)</option>
-        <option value="gemini-2.5-flash-preview-04-17">Gemini 2.5 Flash (Preview)</option>
+        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
       `;
     } else if (provider === 'cerebras') {
       modelSelect.innerHTML = `

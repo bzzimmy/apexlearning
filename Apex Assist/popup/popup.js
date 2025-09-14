@@ -33,8 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Format display based on provider and model
       let displayText = '';
       if (provider === 'gemini') {
-        if (model === 'gemini-2.5-flash-preview-04-17') {
-          displayText = 'Gemini 2.5 Flash (Preview)';
+        if (model === 'gemini-2.5-flash') {
+          displayText = 'Gemini 2.5 Flash';
         } else {
           displayText = 'Gemini 2.0 Flash';
         }
