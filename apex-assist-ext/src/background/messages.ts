@@ -32,8 +32,8 @@ export function registerMessageHandlers() {
       return true
     }
 
-    if ((message as any).action === 'testProvider') {
-      const { provider, apiKey, model } = message as any
+    if (message.action === 'testProvider') {
+      const { provider, apiKey, model } = message
       const p = (provider === 'gemini' || provider === 'cerebras') ? provider : 'gemini'
       testProvider({ provider: p, apiKey, model })
         .then((ok) => sendResponse({ success: ok }))

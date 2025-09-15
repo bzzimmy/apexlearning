@@ -3,13 +3,14 @@ import { buildPrompt } from './prompt'
 import { parseProgress } from './status'
 import { getAnswers, getQuestion, getAnswersMultipleChoice, isMultipleChoiceQuestion } from './scrape'
 import type { AnswerOption } from './scrape'
+import type { Settings } from '../shared/types'
 import { selectMultiple, selectSingle } from './select'
 import { logger } from './logger'
 
 let loopStopped = false
 let attempts = 0
 let incorrectAnswers = 0
-let settings: any = null
+let settings: Settings | null = null
 
 let automationRunning = false
 
@@ -19,11 +20,12 @@ export async function startAutomation() {
   return new Promise((resolve) => {
     chrome.runtime.sendMessage({ action: 'getSettings' }, (response) => {
       if (response && response.settings) {
-        settings = response.settings
-        const apiKey = settings.provider === 'cerebras' ? settings.cerebrasApiKey : settings.geminiApiKey
+        const s: Settings = response.settings as Settings
+        settings = s
+        const apiKey = s.provider === 'cerebras' ? s.cerebrasApiKey : s.geminiApiKey
         if (!apiKey) {
-          console.error(`[Apex Assist] ${settings.provider} API key not set. Please set it in options.`)
-          resolve({ success: false, error: `${settings.provider} API key not set` })
+          console.error(`[Apex Assist] ${s.provider} API key not set. Please set it in options.`)
+          resolve({ success: false, error: `${s.provider} API key not set` })
           return
         }
         attempts = 0
@@ -204,7 +206,8 @@ async function runAutomation() {
   }
 
   try {
-    const apiKey = settings.provider === 'cerebras' ? settings.cerebrasApiKey : settings.geminiApiKey
+    if (!settings) throw new Error('Settings not loaded')
+    const apiKey = settings.provider === 'cerebras' ? settings.cerebrasApiKey! : settings.geminiApiKey!
     const provider = settings.provider
     const model = settings.model
     logger.info('API Request sent')

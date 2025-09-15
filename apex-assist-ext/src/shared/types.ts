@@ -40,8 +40,15 @@ export type BackgroundMessage =
       allowedLetters?: string[];
       isMultipleChoice?: boolean;
     }
-  | { action: 'captureVisibleTab' };
+  | { action: 'captureVisibleTab' }
+  | {
+      action: 'testProvider';
+      provider: string;
+      apiKey: string;
+      model: string;
+    };
 
+// Legacy alias retained for convenience (not required)
 export type TestProviderMessage = {
   action: 'testProvider';
   provider: string;

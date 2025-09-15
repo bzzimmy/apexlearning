@@ -30,6 +30,7 @@ export default {
   permissions: [
     'storage',
     'activeTab',
+    'tabs',
   ],
   commands: {
     'toggle-automation': {
