@@ -10,12 +10,12 @@ Apex Assist is a Chrome extension designed to automate quizzes and tests on Apex
 ## Features
 
 *   **AI-Powered Answers:** Uses Google Gemini to analyze questions and determine the most likely correct answer.
-*   **Image Processing:** Can capture the screen and send images to the AI for questions involving visual elements (requires `gemini-pro-vision` or similar model).
+*   **Image Processing:** Can capture the screen and send images to the AI for questions involving visual elements (ensure your selected Gemini model supports image inputs).
 *   **Multiple Choice Support:** Handles both single-choice and multiple-choice (select all that apply) questions.
 *   **Configurable Behavior:**
     *   Set delays between answering questions.
     *   Enable a "sabotage" feature to intentionally miss a configurable number of questions for more natural results.
-    *   Choose the specific Gemini model to use (e.g., `gemini-2.0-flash`, `gemini-2.5-flash-preview-04-17`).
+    *   Choose the specific Gemini model to use (e.g., `gemini-2.5-flash`, `gemini-2.0-flash`).
     *   Configure the number of retry attempts if the script fails to get an answer.
 *   **Status Monitoring:** The popup shows connection status, the model being used, and quiz progress.
 *   **Simple Controls:** Easily start and stop the automation from the extension popup.

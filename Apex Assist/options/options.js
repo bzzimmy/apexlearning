@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     provider: 'gemini',
     geminiApiKey: '',
     cerebrasApiKey: '',
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     delay: 5,
     sabotage: true,
     incorrectCount: 2,
@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       geminiApiKeyInput.value = settings.geminiApiKey || '';
       cerebrasApiKeyInput.value = settings.cerebrasApiKey || '';
-      modelSelect.value = settings.model || 'gemini-2.0-flash';
+      modelSelect.value = settings.model || 'gemini-2.5-flash';
       delayInput.value = settings.delay || 5;
       sabotageCheckbox.checked = settings.sabotage !== false;
       incorrectCountInput.value = settings.incorrectCount || 2;
@@ -85,8 +85,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (provider === 'gemini') {
       modelSelect.innerHTML = `
-        <option value="gemini-2.0-flash">Gemini 2.0 Flash (Default)</option>
-        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+        <option value="gemini-2.5-flash">Gemini 2.5 Flash (Default)</option>
+        <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
       `;
     } else if (provider === 'cerebras') {
       modelSelect.innerHTML = `
@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentModel = modelSelect.value;
     if (!Array.from(modelSelect.options).some(opt => opt.value === currentModel)) {
       if (provider === 'gemini') {
-        modelSelect.value = 'gemini-2.0-flash';
+        modelSelect.value = 'gemini-2.5-flash';
       } else if (provider === 'cerebras') {
         modelSelect.value = 'llama-4-scout-17b-16e-instruct';
       }

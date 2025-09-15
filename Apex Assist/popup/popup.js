@@ -26,9 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Update model name display
   function updateModelInfo() {
     chrome.storage.sync.get('settings', (result) => {
-      const settings = result.settings || { provider: 'gemini', model: 'gemini-2.0-flash' };
+      const settings = result.settings || { provider: 'gemini', model: 'gemini-2.5-flash' };
       const provider = settings.provider || 'gemini';
-      const model = settings.model || 'gemini-2.0-flash';
+      const model = settings.model || 'gemini-2.5-flash';
 
       // Format display based on provider and model
       let displayText = '';

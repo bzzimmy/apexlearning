@@ -69,33 +69,29 @@ const getQuizName = () => {
 
 // Check if the quiz has been completed
 const isQuizCompleted = () => {
-  // Check for the completion element that appears when a quiz is finished
-  const completionElement = document.querySelector(".summary-title-header");
-  
-  if (completionElement && completionElement.textContent.trim() === "Completed") {
-    console.log("[Apex Assist] Quiz completion detected");
+  // Direct check for a clear completion header
+  const completionElement = document.querySelector('.summary-title-header');
+  if (completionElement && completionElement.textContent.trim().includes('Completed')) {
+    console.log('[Apex Assist] Quiz completion detected');
     return true;
   }
-  
-  // Additional checks - sometimes the completion status might appear in other elements
-  const otherCompletionIndicators = [
-    ".completion-status:contains('Completed')",
-    "[class*='completed-message']",
-    ".quiz-summary h2:contains('Completed')"
+
+  // Fallback: scan likely containers and check text content
+  const candidates = [
+    '.completion-status',
+    '[class*="completed-message"]',
+    '.quiz-summary h2',
+    '.quiz-summary',
   ];
-  
-  for (const selector of otherCompletionIndicators) {
-    try {
-      const element = document.querySelector(selector);
-      if (element && element.textContent.includes("Completed")) {
-        console.log("[Apex Assist] Quiz completion detected via alternative element");
-        return true;
-      }
-    } catch (error) {
-      // Some advanced selectors might not be supported, ignore errors
+
+  for (const selector of candidates) {
+    const el = document.querySelector(selector);
+    if (el && /Completed/i.test(el.textContent || '')) {
+      console.log('[Apex Assist] Quiz completion detected via alternative element');
+      return true;
     }
   }
-  
+
   return false;
 };
 
@@ -417,13 +413,12 @@ const callAIProvider = async (formattedQuery, images = [], isMultipleChoice = fa
     }
     
     if (isMultipleChoice) {
-      input += "Task: This is a multiple-choice question where MULTIPLE answers can be correct. You MUST identify ALL correct options.\\n";
-      input += "Return ALL correct options in an array, even if there are multiple correct answers.\\n";
-      // Corrected JSON format string
-      input += 'Provide your answer in the format: {\\\"letters\\\": [\\\"A\\\", \\\"C\\\", \\\"E\\\"], \\\"explanation\\\": \\\"[Few words explaining why the choices are correct]\\\".\\n';
-      input += "IMPORTANT: The letters array should contain ALL correct options, not just one. If multiple options are correct, include ALL of them in the array.\\n";
-      input += "For example, if options A, C, and E are correct, your response should include [\\\"A\\\", \\\"C\\\", \\\"E\\\"] in the letters array.\\n";
-      input += "IMPORTANT: When specifying answers, use ONLY the option letters (A, B, C, etc.) in your response. DO NOT use the content of the answers like 'SAS', 'LL', etc.\\n";
+      input += 'Task: This is a multiple-choice question where MULTIPLE answers can be correct. You MUST identify ALL correct options.\n';
+      input += 'Return ALL correct options in an array, even if there are multiple correct answers.\n';
+      input += 'Provide your answer in the format: {"letters": ["A", "C", "E"], "explanation": "[Few words explaining why the choices are correct]"}\n';
+      input += 'IMPORTANT: The letters array should contain ALL correct options, not just one. If multiple options are correct, include ALL of them in the array.\n';
+      input += 'For example, if options A, C, and E are correct, your response should include ["A", "C", "E"] in the letters array.\n';
+      input += 'IMPORTANT: When specifying answers, use ONLY the option letters (A, B, C, etc.) in your response. DO NOT use the content of the answers like "SAS", "LL", etc.\n';
       
       // Create a reference for the AI to understand the mapping
       input += "\\nFor reference, here are the options:\\n";
@@ -431,8 +426,7 @@ const callAIProvider = async (formattedQuery, images = [], isMultipleChoice = fa
         input += `${answer.letter}. ${answer.content}\\n`;
       });
     } else {
-      // Corrected JSON format string
-      input += 'Task: Identify the correct option that best answers the provided question and provide your answer in the format: {\\\"letters\\\": [\\\"Letter(s) to the correct options\\\"], \\\"explanation\\\": \\\"[Few words explaining why the choice is correct]\\\}.\\n';
+      input += 'Task: Identify the single best option. Provide your answer in the format: {"letters": ["A"], "explanation": "[Few words explaining why the choice is correct]"}\n';
     }
     
     // Log the final input being sent (excluding image data for brevity)
