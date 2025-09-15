@@ -4,6 +4,7 @@ import { parseProgress } from './status'
 import { getAnswers, getQuestion, getAnswersMultipleChoice, isMultipleChoiceQuestion } from './scrape'
 import type { AnswerOption } from './scrape'
 import { selectMultiple, selectSingle } from './select'
+import { logger } from './logger'
 
 let loopStopped = false
 let attempts = 0
@@ -29,6 +30,7 @@ export async function startAutomation() {
         incorrectAnswers = 0
         loopStopped = false
         automationRunning = true
+        logger.info('Automation started')
         runAutomation()
         resolve({ success: true })
       } else {
@@ -41,6 +43,7 @@ export async function startAutomation() {
 export function stopAutomation() {
   loopStopped = true
   automationRunning = false
+  logger.info('Stop requested')
   return { success: true }
 }
 
@@ -153,7 +156,7 @@ function shouldSabotage(totalQuestions: number) {
 
 async function runAutomation() {
   if (attempts >= (settings?.attempts ?? 3)) {
-    console.log(`[Apex Assist] Giving up after ${attempts} attempts`)
+    logger.info(`Giving up after ${attempts} attempts`)
     automationRunning = false
     return
   }
@@ -161,12 +164,12 @@ async function runAutomation() {
 
   const question = getQuestion()
   if (!question || question.trim().length < 1) {
-    console.log('[Apex Assist] Cannot get question, exiting')
+    logger.warn('Cannot get question, exiting')
     automationRunning = false
     return
   }
   if (loopStopped) {
-    console.log('[Apex Assist] Loop forcefully stopped, exiting')
+    logger.info('Loop stopped, exiting')
     automationRunning = false
     return
   }
@@ -174,13 +177,13 @@ async function runAutomation() {
   const isMC = isMultipleChoiceQuestion()
   const answers = isMC ? getAnswersMultipleChoice() : getAnswers()
   const progress = parseProgress()
+  logger.info('Question Type Detected: ' + (isMC ? 'Multiple Choice' : 'Single Choice'))
   const images = settings?.processImages ? await captureScreen().catch(() => []) : []
   const formattedQuery = buildPrompt(question, answers)
 
-  console.log(`[Apex Assist] Question ${progress.current} of ${progress.total}`)
-  console.log(formattedQuery)
-  console.log(`[Apex Assist] Images: ${images.length}`)
-  console.log(`[Apex Assist] Multiple Choice: ${isMC}`)
+  logger.info(`Question ${progress.current} of ${progress.total}`)
+  logger.debug(formattedQuery)
+  logger.info(`Images: ${images.length}`)
 
   // Build AI input with instructions
   let input = `${formattedQuery}\n\n`
@@ -204,6 +207,7 @@ async function runAutomation() {
     const apiKey = settings.provider === 'cerebras' ? settings.cerebrasApiKey : settings.geminiApiKey
     const provider = settings.provider
     const model = settings.model
+    logger.info('API Request sent')
     const response: any = await new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(
         { action: 'callAIProvider', input, images, provider, apiKey, model, allowedLetters: answers.map(a => a.letter), isMultipleChoice: isMC },
@@ -219,10 +223,10 @@ async function runAutomation() {
     const parts = response.candidates?.[0]?.content?.parts || []
     const responseText = parts.map((p: any) => p?.text || '').join('\n')
     const answer = parseAIResponseText(responseText, isMC, answers)
-    console.log('[Apex Assist] Answer result:', answer)
+    logger.info('API Response parsed')
     if (!answer || !answer.letters || answer.letters.length === 0) {
-      console.log('[Apex Assist] Failed to retrieve a valid answer')
-      setTimeout(() => runAutomation(), 1000)
+      logger.warn('Failed to retrieve a valid answer')
+      setTimeout(() => { if (automationRunning) runAutomation() }, 1000)
       return
     }
 
@@ -232,6 +236,8 @@ async function runAutomation() {
 
     if (!isMC) {
       const chosen = sabotage ? answers.find((a) => a.letter !== lettersToSelect[0])?.letter || lettersToSelect[0] : lettersToSelect[0]
+      if (loopStopped || !automationRunning) { logger.info('Stop detected before selection'); return }
+      logger.info('Selecting answers')
       selectSingle(answers, chosen)
     } else {
       if (sabotage) {
@@ -242,13 +248,17 @@ async function runAutomation() {
           lettersToSelect = [lettersToSelect[0], ...incorrect.slice(0, 1)]
         }
       }
+      if (loopStopped || !automationRunning) { logger.info('Stop detected before selection'); return }
+      logger.info('Selecting answers')
       await selectMultiple(answers, lettersToSelect)
     }
 
     // Wait before submitting
-    await new Promise((r) => setTimeout(r, (settings.delay ?? 5) * 1000))
+    await cancellableWait((settings.delay ?? 5) * 1000)
+    if (loopStopped || !automationRunning) { logger.info('Stop detected before submit'); return }
+    logger.info('Submitting answer')
     document.querySelector('kp-question-controls button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    await new Promise((r) => setTimeout(r, 1000))
+    await cancellableWait(1000)
 
     // Check incorrect feedback
     const answerTextEl = document.querySelector('.feedback-body.active kp-feedback-header span.header-text') as HTMLElement | null
@@ -257,11 +267,30 @@ async function runAutomation() {
 
     // Next
     document.querySelector('kp-question-controls button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    await new Promise((r) => setTimeout(r, 1000))
+    await cancellableWait(1000)
 
     if (automationRunning) runAutomation()
   } catch (error) {
-    console.error('[Apex Assist] Error during automation:', error)
+    logger.error('Error during automation:', error)
     setTimeout(() => { if (automationRunning) runAutomation() }, 2000)
   }
+}
+
+// Wait helper that returns early if stop is requested
+function cancellableWait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const start = Date.now()
+    const iv = window.setInterval(() => {
+      if (loopStopped || !automationRunning) {
+        window.clearInterval(iv)
+        resolve()
+        return
+      }
+      const elapsed = Date.now() - start
+      if (elapsed >= ms) {
+        window.clearInterval(iv)
+        resolve()
+      }
+    }, 50)
+  })
 }
