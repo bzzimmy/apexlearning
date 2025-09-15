@@ -19,6 +19,77 @@ let settings = {
   processImages: true
 };
 
+// --------------------
+// Utility helpers
+// --------------------
+
+// Parse quiz progress numbers from the UI
+const getProgressInfo = () => {
+  const questionInfoText = document.querySelector(".sia-question-number")?.innerText ?? "";
+  const questionRegexResult = /Question (.*) of (.*)/.exec(questionInfoText);
+  let questionNum = 1;
+  let totalQuestions = 1;
+  if (questionRegexResult) {
+    questionNum = parseInt(questionRegexResult[1]) || 1;
+    totalQuestions = parseInt(questionRegexResult[2]) || 1;
+  }
+  return { questionNum, totalQuestions };
+};
+
+// Build a formatted query shown in logs and used as base prompt context
+const buildFormattedQuery = (question, answers, isMultipleChoice) => [
+  question,
+  "",
+  "Options:",
+  ...new Set(answers.map(({ value }) => value)),
+  isMultipleChoice ? "\nNote: This is a multiple-choice question. Select all that apply." : ""
+].join("\n");
+
+// Ensure letters are always an array
+const coerceLettersArray = (letters) => {
+  if (!letters) return [];
+  if (Array.isArray(letters)) return letters;
+  if (typeof letters === 'string') {
+    return letters.includes(',')
+      ? letters.split(',').map(l => l.trim())
+      : [letters];
+  }
+  return [];
+};
+
+// Map any returned content values back to letters for MC questions
+const mapContentToLettersIfNeeded = (letters, isMultipleChoice, answers) => {
+  if (!isMultipleChoice || !letters) return letters || [];
+
+  const responseLetters = [];
+  for (const item of letters) {
+    if (/^[A-F]$/i.test(item)) {
+      responseLetters.push(item.toUpperCase());
+    } else {
+      const match = answers.find(a => a.content.trim().toUpperCase() === (item || '').trim().toUpperCase());
+      if (match) {
+        responseLetters.push(match.letter);
+        console.log(`[Apex Assist] Mapped answer content "${item}" to letter "${match.letter}"`);
+      } else {
+        console.warn(`[Apex Assist] Couldn't map answer content "${item}" to a letter`);
+      }
+    }
+  }
+  return responseLetters;
+};
+
+// Parse provider response text into a normalized object { letters: [], explanation?: string }
+const parseAIResponseText = (responseText, isMultipleChoice, answers) => {
+  console.log("[Apex Assist] Raw provider response:", responseText);
+  const jsonMatch = responseText.match(/(\{[\s\S]*\})/);
+  if (!jsonMatch || !jsonMatch[1]) {
+    throw new Error("Could not parse JSON from provider response");
+  }
+  const parsed = JSON.parse(jsonMatch[1]);
+  parsed.letters = mapContentToLettersIfNeeded(coerceLettersArray(parsed.letters), isMultipleChoice, answers);
+  return parsed;
+};
+
 // Helper function to create a placeholder answer object (for testing)
 const createPlaceholderAnswer = (letter, description) => ({
   value: `${letter}. ${description}`,
@@ -32,6 +103,239 @@ const createPlaceholderAnswer = (letter, description) => ({
 const sleep = (time = 1000) => {
   console.log("[Apex Assist] Sleeping for", time);
   return new Promise((resolve) => setTimeout(() => resolve(), time));
+};
+
+// Answer selection helpers
+const selectMultipleChoiceAnswers = async (answers, letters, sabotage) => {
+  if (sabotage) {
+    console.log("[Apex Assist] Sabotaging this multiple-choice question");
+    const correctLetters = new Set(letters);
+    const allLetters = answers.map(a => a.letter);
+    const incorrectLetters = allLetters.filter(l => !correctLetters.has(l));
+
+    if (correctLetters.size > 0) {
+      const oneCorrect = Array.from(correctLetters)[0];
+      const selected = [oneCorrect, ...incorrectLetters.slice(0, 1)];
+      for (const l of selected) {
+        const ans = answers.find(a => a.letter === l);
+        if (ans) {
+          ans.select();
+          console.log(`[Apex Assist] Selected ${l} (sabotage mode)`);
+          await sleep(500);
+        }
+      }
+    } else {
+      for (let i = 0; i < Math.min(2, answers.length); i++) {
+        answers[i].select();
+        await sleep(500);
+      }
+    }
+    return;
+  }
+
+  let selectedAny = false;
+  console.log(`[Apex Assist] Attempting to select ${letters.length} answers: ${letters.join(', ')}`);
+  for (const l of letters) {
+    const ans = answers.find(a => a.letter === l);
+    if (ans) {
+      console.log(`[Apex Assist] Selecting option ${l}...`);
+      ans.select();
+      console.log(`[Apex Assist] Selected option ${l} successfully!`);
+      selectedAny = true;
+      await sleep(700);
+    } else {
+      console.warn(`[Apex Assist] Could not find answer with letter ${l}`);
+    }
+  }
+
+  if (selectedAny) return;
+
+  // Fallback by checkbox index
+  console.log("[Apex Assist] Falling back to direct checkbox selection");
+  const checkboxes = document.querySelectorAll('.mat-checkbox-input, input[type="checkbox"]');
+  console.log(`[Apex Assist] Found ${checkboxes.length} checkboxes for direct selection`);
+  const indices = letters.map(letter => letter.charCodeAt(0) - 65);
+  console.log(`[Apex Assist] Will attempt to select checkboxes at indices: ${indices.join(', ')}`);
+
+  for (const idx of indices) {
+    if (idx >= 0 && idx < checkboxes.length) {
+      try {
+        console.log(`[Apex Assist] Clicking checkbox at index ${idx}...`);
+        const parentCheckbox = checkboxes[idx].closest('.mat-checkbox');
+        if (parentCheckbox) {
+          parentCheckbox.click();
+          console.log(`[Apex Assist] Clicked parent checkbox at index ${idx} successfully!`);
+        } else {
+          checkboxes[idx].click();
+          console.log(`[Apex Assist] Directly clicked checkbox at index ${idx} successfully!`);
+        }
+        await sleep(700);
+      } catch (error) {
+        console.error(`[Apex Assist] Error clicking checkbox at index ${idx}:`, error);
+        try {
+          const parent = checkboxes[idx].closest('.mat-checkbox');
+          if (parent) {
+            parent.click();
+            console.log(`[Apex Assist] Clicked parent of checkbox at index ${idx}`);
+          }
+        } catch (innerError) {
+          console.error(`[Apex Assist] Error clicking parent of checkbox at index ${idx}:`, innerError);
+        }
+      }
+    } else {
+      console.warn(`[Apex Assist] Index ${idx} is out of range (0-${checkboxes.length - 1})`);
+    }
+  }
+
+  if (indices.length > 0 && indices.every(i => i < 0 || i >= checkboxes.length)) {
+    console.log("[Apex Assist] Trying alternative checkbox selection method");
+    const options = document.querySelectorAll('.sia-mc-option, .sia-choice, .choice-item');
+    console.log(`[Apex Assist] Found ${options.length} option elements for alternative selection`);
+    for (const idx of indices) {
+      if (idx >= 0 && idx < options.length) {
+        try {
+          console.log(`[Apex Assist] Clicking option element at index ${idx}...`);
+          options[idx].click();
+          console.log(`[Apex Assist] Clicked option at index ${idx} successfully!`);
+          await sleep(700);
+        } catch (error) {
+          console.error(`[Apex Assist] Error clicking option at index ${idx}:`, error);
+        }
+      }
+    }
+  }
+};
+
+const selectSingleChoiceAnswers = (answers, letters, sabotage) => {
+  letters.forEach((letter) => {
+    const ans = answers.find((a) => (sabotage ? a.letter !== letter : a.letter === letter));
+    if (ans) {
+      ans.select();
+      if (sabotage) {
+        console.log("[Apex Assist] Sabotaging this question, correct answer is", letters, "choosing", ans.letter, "instead");
+      }
+    }
+  });
+};
+
+// Build answer arrays
+const getAnswersSingleChoice = () => {
+  return [...document.querySelectorAll(".sia-input .label")]
+    .map((el) => {
+      const value = (el.querySelector(".label")?.innerText ?? "").replaceAll("\n", "");
+      const letter = value.charAt(0).toUpperCase();
+      return {
+        value,
+        letter,
+        content: value.substring(3).trim(),
+        select: () => el.click(),
+      };
+    })
+    .filter((answer) => answer.value.trim().length >= 1);
+};
+
+const getAnswersMultipleChoice = () => {
+  console.log("[Apex Assist] Analyzing multiple choice options...");
+  const optionSelectors = ['.sia-mc-option', '.sia-choice', '.mat-checkbox-layout'];
+  let mcOptions = [];
+  for (const selector of optionSelectors) {
+    mcOptions = document.querySelectorAll(selector);
+    if (mcOptions.length > 0) {
+      console.log(`[Apex Assist] Found options using selector: ${selector}`);
+      break;
+    }
+  }
+  const answers = Array.from(mcOptions).map((el, index) => {
+    const letterSelectors = ['.sia-choice-letter', 'span[class*="letter"]', '.choice-label'];
+    let letterElement = null;
+    for (const selector of letterSelectors) {
+      letterElement = el.querySelector(selector);
+      if (letterElement) {
+        console.log(`[Apex Assist] Found letter using selector: ${selector}`);
+        break;
+      }
+    }
+    const letter = letterElement ? letterElement.textContent.trim().replace(/[^A-Za-z0-9]/g, '') : String.fromCharCode(65 + index);
+
+    let content = '';
+    const labelElement = document.querySelector(`label[for="mat-checkbox-${index + 1}-input"]`);
+    if (labelElement) {
+      content = labelElement.textContent.trim().replace(/^[A-Z]\.\s*/, '');
+      console.log(`[Apex Assist] Found content from label: "${content}"`);
+    }
+
+    if (!content) {
+      const contentSelectors = ['.sia-mc-option-text', '.choice-text', '.mat-checkbox-label', 'span:not([class*="letter"])'];
+      let contentElement = null;
+      for (const selector of contentSelectors) {
+        contentElement = el.querySelector(selector);
+        if (contentElement) {
+          console.log(`[Apex Assist] Found content using selector: ${selector}`);
+          content = contentElement.textContent.trim();
+          break;
+        }
+      }
+    }
+
+    if (!content) {
+      content = el.textContent.trim().replace(/^[A-Z]\.\s*/, '');
+      console.log(`[Apex Assist] Using full element text: "${content}"`);
+    }
+
+    if (!content) {
+      const nextSibling = el.nextElementSibling;
+      if (nextSibling) {
+        content = nextSibling.textContent.trim();
+        console.log(`[Apex Assist] Found content in next sibling: "${content}"`);
+      }
+    }
+
+    if (!content || content.length < 2) {
+      content = `Option ${letter}`;
+      console.warn(`[Apex Assist] Using fallback content for option ${letter}`);
+    }
+
+    let checkbox = null;
+    const checkboxSelectors = ['.mat-checkbox', 'input[type="checkbox"]', '.checkbox'];
+    for (const selector of checkboxSelectors) {
+      checkbox = el.querySelector(selector) || el.closest(selector);
+      if (checkbox) {
+        console.log(`[Apex Assist] Found checkbox using selector: ${selector}`);
+        break;
+      }
+    }
+    if (!checkbox) checkbox = el;
+
+    console.log(`[Apex Assist] Mapped option: Letter=${letter}, Content=\"${content.substring(0, 50)}${content.length > 50 ? '...' : ''}\"`);
+    return {
+      value: `${letter}. ${content}`,
+      letter,
+      content,
+      select: () => {
+        console.log(`[Apex Assist] Selecting checkbox option: ${letter}`);
+        try {
+          checkbox.click();
+          console.log(`[Apex Assist] Clicked checkbox for option ${letter}`);
+        } catch (error) {
+          console.error(`[Apex Assist] Error clicking checkbox for option ${letter}:`, error);
+          try {
+            const input = el.querySelector('input[type="checkbox"]');
+            if (input) {
+              input.click();
+              console.log(`[Apex Assist] Clicked input for option ${letter}`);
+            } else {
+              console.warn(`[Apex Assist] Could not find input for option ${letter}`);
+            }
+          } catch (innerError) {
+            console.error(`[Apex Assist] Error with alternative click for option ${letter}:`, innerError);
+          }
+        }
+      }
+    };
+  });
+
+  console.log("[Apex Assist] Parsed answers:", answers.map(a => ({ letter: a.letter, content: a.content })));
+  return answers;
 };
 
 // Get quiz name from UI
@@ -176,193 +480,11 @@ const getContext = async () => {
     
     console.log(`[Apex Assist] Question type: ${isMultipleChoice ? 'Multiple Choice' : 'Single Choice'}`);
     
-    if (isMultipleChoice) {
-      console.log("[Apex Assist] Analyzing multiple choice options...");
-      
-      // Log all available options for debugging
-      const optionElements = document.querySelectorAll('.sia-mc-option, .sia-choice');
-      console.log(`[Apex Assist] Found ${optionElements.length} option elements`);
-      
-      // Dump the HTML structure of the first option for debugging
-      if (optionElements.length > 0) {
-        console.log("[Apex Assist] First option HTML:", optionElements[0].outerHTML);
-      }
-      
-      // Try several selectors to find the options
-      const optionSelectors = [
-        '.sia-mc-option',
-        '.sia-choice',
-        '.mat-checkbox-layout'
-      ];
-      
-      let mcOptions = [];
-      for (const selector of optionSelectors) {
-        mcOptions = document.querySelectorAll(selector);
-        if (mcOptions.length > 0) {
-          console.log(`[Apex Assist] Found options using selector: ${selector}`);
-          break;
-        }
-      }
-      
-      // Handle multiple choice (checkbox) questions
-      answers = Array.from(mcOptions).map((el, index) => {
-        // Look for letter elements with different selectors
-        const letterSelectors = [
-          '.sia-choice-letter',
-          'span[class*="letter"]',
-          '.choice-label'
-        ];
-        
-        let letterElement = null;
-        for (const selector of letterSelectors) {
-          letterElement = el.querySelector(selector);
-          if (letterElement) {
-            console.log(`[Apex Assist] Found letter using selector: ${selector}`);
-            break;
-          }
-        }
-        
-        // Find the letter for this option (A, B, C, etc.)
-        // If we can't find it using selectors, use the index
-        const letter = letterElement 
-          ? letterElement.textContent.trim().replace(/[^A-Za-z0-9]/g, '')
-          : String.fromCharCode(65 + index);
-        
-        // First try with the new direct approach - capture label text directly
-        let content = '';
-        
-        // Try to get text from label - handles the case shown in the screenshot
-        const labelElement = document.querySelector(`label[for="mat-checkbox-${index+1}-input"]`);
-        if (labelElement) {
-          // Remove "A. ", "B. " etc. from the beginning
-          content = labelElement.textContent.trim().replace(/^[A-Z]\.\s*/, '');
-          console.log(`[Apex Assist] Found content from label: "${content}"`);
-        }
-        
-        // If that didn't work, try other selectors
-        if (!content) {
-          const contentSelectors = [
-            '.sia-mc-option-text',
-            '.choice-text',
-            '.mat-checkbox-label',
-            'span:not([class*="letter"])'
-          ];
-          
-          let contentElement = null;
-          for (const selector of contentSelectors) {
-            contentElement = el.querySelector(selector);
-            if (contentElement) {
-              console.log(`[Apex Assist] Found content using selector: ${selector}`);
-              content = contentElement.textContent.trim();
-              break;
-            }
-          }
-        }
-        
-        // If still no content, try to get the entire text and remove the letter
-        if (!content) {
-          content = el.textContent.trim().replace(/^[A-Z]\.\s*/, '');
-          console.log(`[Apex Assist] Using full element text: "${content}"`);
-        }
-        
-        // If content is still empty, try one more approach - find nearby text
-        if (!content) {
-          // Look for adjacent text element
-          const nextSibling = el.nextElementSibling;
-          if (nextSibling) {
-            content = nextSibling.textContent.trim();
-            console.log(`[Apex Assist] Found content in next sibling: "${content}"`);
-          }
-        }
-        
-        // If content is still empty or too short, use a fallback
-        if (!content || content.length < 2) {
-          content = `Option ${letter}`;
-          console.warn(`[Apex Assist] Using fallback content for option ${letter}`);
-        }
-        
-        // Get the checkbox element
-        let checkbox = null;
-        const checkboxSelectors = [
-          '.mat-checkbox',
-          'input[type="checkbox"]',
-          '.checkbox'
-        ];
-        
-        for (const selector of checkboxSelectors) {
-          checkbox = el.querySelector(selector) || el.closest(selector);
-          if (checkbox) {
-            console.log(`[Apex Assist] Found checkbox using selector: ${selector}`);
-            break;
-          }
-        }
-        
-        // As a fallback, use the parent element itself
-        if (!checkbox) {
-          checkbox = el;
-        }
-        
-        console.log(`[Apex Assist] Mapped option: Letter=${letter}, Content="${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`);
-        
-        return {
-          value: `${letter}. ${content}`,
-          letter,
-          content,
-          select: () => {
-            console.log(`[Apex Assist] Selecting checkbox option: ${letter}`);
-            try {
-              // Try to click the checkbox element
-              checkbox.click();
-              console.log(`[Apex Assist] Clicked checkbox for option ${letter}`);
-            } catch (error) {
-              console.error(`[Apex Assist] Error clicking checkbox for option ${letter}:`, error);
-              
-              // Alternative: try to find the input directly and click it
-              try {
-                const input = el.querySelector('input[type="checkbox"]');
-                if (input) {
-                  input.click();
-                  console.log(`[Apex Assist] Clicked input for option ${letter}`);
-                } else {
-                  console.warn(`[Apex Assist] Could not find input for option ${letter}`);
-                }
-              } catch (innerError) {
-                console.error(`[Apex Assist] Error with alternative click for option ${letter}:`, innerError);
-              }
-            }
-          }
-        };
-      });
-      
-      // Log all parsed answers for debugging
-      console.log("[Apex Assist] Parsed answers:", answers.map(a => ({ letter: a.letter, content: a.content })));
-    } else {
-      // Handle regular single choice questions
-      answers = [...document.querySelectorAll(".sia-input .label")]
-        .map((el) => {
-          const value = (
-            el.querySelector(".label")?.innerText ?? ""
-          ).replaceAll("\n", "");
-          const letter = value.charAt(0).toUpperCase();
+    answers = isMultipleChoice ? getAnswersMultipleChoice() : getAnswersSingleChoice();
 
-          return {
-            value,
-            letter,
-            content: value.substring(3).trim(),
-            select: () => {
-              el.click();
-            },
-          };
-        })
-        .filter((answer) => answer.value.trim().length >= 1);
-    }
-
-    const questionInfoText = document.querySelector(".sia-question-number")?.innerText ?? "";
-    const questionRegexResult = /Question (.*) of (.*)/.exec(questionInfoText);
-    if (questionRegexResult) {
-      questionNum = parseInt(questionRegexResult[1]) || 1;
-      totalQuestions = parseInt(questionRegexResult[2]) || 1;
-    }
+    const progress = getProgressInfo();
+    questionNum = progress.questionNum;
+    totalQuestions = progress.totalQuestions;
   }
 
   return {
@@ -372,13 +494,7 @@ const getContext = async () => {
     totalQuestions,
     images: questionImages,
     isMultipleChoice,
-    formattedQuery: [
-      question,
-      "",
-      "Options:",
-      ...new Set(answers.map(({ value }) => value)),
-      isMultipleChoice ? "\nNote: This is a multiple-choice question. Select all that apply." : ""
-    ].join("\n"),
+    formattedQuery: buildFormattedQuery(question, answers, isMultipleChoice),
   };
 };
 
@@ -460,63 +576,10 @@ const callAIProvider = async (formattedQuery, images = [], isMultipleChoice = fa
           }
           
           try {
-            // Extract the text content from API response
             const responseText = response.data.candidates[0].content.parts[0].text;
-            console.log(`[Apex Assist] Raw ${settings.provider} response:`, responseText);
-            
-            // Parse JSON from the response
-            const jsonMatch = responseText.match(/(\{[\s\S]*\})/);
-            if (jsonMatch && jsonMatch[1]) {
-              const parsed = JSON.parse(jsonMatch[1]);
-              console.log("[Apex Assist] Parsed JSON response:", parsed);
-              
-              // Make sure letters is always an array
-              if (parsed.letters && !Array.isArray(parsed.letters)) {
-                if (typeof parsed.letters === 'string') {
-                  // If it's a string, split it if it contains multiple letters
-                  if (parsed.letters.includes(',')) {
-                    parsed.letters = parsed.letters.split(',').map(l => l.trim());
-                  } else {
-                    // If it's a single letter string, convert to array
-                    parsed.letters = [parsed.letters];
-                  }
-                } else {
-                  // Fallback to empty array if it's neither array nor string
-                  parsed.letters = [];
-                }
-                console.log("[Apex Assist] Converted letters to array:", parsed.letters);
-              }
-              
-              // If we get content instead of letters in a multiple choice question,
-              // try to map content to letters
-              if (isMultipleChoice && parsed.letters) {
-                const responseLetters = [];
-                
-                for (const item of parsed.letters) {
-                  // Check if this is already a letter (A, B, C, etc.)
-                  if (/^[A-F]$/.test(item)) {
-                    responseLetters.push(item);
-                  } else {
-                    // This might be content like "SAS" or "HL" - try to find matching letter
-                    const matchingAnswer = answers.find(answer => 
-                      answer.content.trim().toUpperCase() === item.trim().toUpperCase());
-                    
-                    if (matchingAnswer) {
-                      responseLetters.push(matchingAnswer.letter);
-                      console.log(`[Apex Assist] Mapped answer content "${item}" to letter "${matchingAnswer.letter}"`);
-                    } else {
-                      console.warn(`[Apex Assist] Couldn't map answer content "${item}" to a letter`);
-                    }
-                  }
-                }
-                
-                // Replace the letters array with our mapped version
-                parsed.letters = responseLetters;
-              }
-              
-              return resolve(parsed);
-            }
-            return reject(new Error(`Could not parse JSON from ${settings.provider} response`));
+            const parsed = parseAIResponseText(responseText, isMultipleChoice, answers);
+            console.log("[Apex Assist] Parsed JSON response:", parsed);
+            return resolve(parsed);
           } catch (error) {
             return reject(error);
           }
@@ -574,142 +637,9 @@ const runAutomation = async () => {
     const sabotage = shouldSabotage(totalQuestions);
     
     if (isMultipleChoice) {
-      // Handle multiple choice (checkbox) selection
-      if (sabotage) {
-        console.log("[Apex Assist] Sabotaging this multiple-choice question");
-        // For sabotage on multiple choice, we'll select a mix of correct and incorrect
-        const correctLetters = new Set(answer.letters);
-        const allLetters = answers.map(a => a.letter);
-        
-        // Select some incorrect options
-        const incorrectLetters = allLetters.filter(l => !correctLetters.has(l));
-        
-        // Select at least one correct answer to not be too obvious
-        if (correctLetters.size > 0) {
-          const oneCorrectLetter = Array.from(correctLetters)[0];
-          const selectedLetters = [oneCorrectLetter, ...incorrectLetters.slice(0, 1)];
-          
-          // Select the answers with a delay between each
-          for (const letter of selectedLetters) {
-            const answerObj = answers.find(a => a.letter === letter);
-            if (answerObj) {
-              answerObj.select();
-              console.log(`[Apex Assist] Selected ${letter} (sabotage mode)`);
-              await sleep(500); // Add a small delay between selections
-            }
-          }
-        } else {
-          // Just pick random answers
-          for (let i = 0; i < Math.min(2, answers.length); i++) {
-            answers[i].select();
-            await sleep(500); // Add a small delay between selections
-          }
-        }
-      } else {
-        // Normal selection for multiple choice
-        let selectedAny = false;
-        
-        console.log(`[Apex Assist] Attempting to select ${answer.letters.length} answers: ${answer.letters.join(', ')}`);
-        
-        // First try to select by letter
-        for (const letter of answer.letters) {
-          const answerObj = answers.find(a => a.letter === letter);
-          if (answerObj) {
-            console.log(`[Apex Assist] Selecting option ${letter}...`);
-            answerObj.select();
-            console.log(`[Apex Assist] Selected option ${letter} successfully!`);
-            selectedAny = true;
-            await sleep(700); // Add a delay between selections for visibility
-          } else {
-            console.warn(`[Apex Assist] Could not find answer with letter ${letter}`);
-          }
-        }
-        
-        // If we couldn't select any options by letter, try direct selection by index
-        if (!selectedAny) {
-          console.log("[Apex Assist] Falling back to direct checkbox selection");
-          
-          // Try to directly select checkboxes based on index in the response
-          // This is a fallback method if we can't match letters
-          const checkboxes = document.querySelectorAll('.mat-checkbox-input, input[type="checkbox"]');
-          console.log(`[Apex Assist] Found ${checkboxes.length} checkboxes for direct selection`);
-          
-          // Map AI response letters to indices (A=0, B=1, etc.)
-          const indices = answer.letters.map(letter => letter.charCodeAt(0) - 65);
-          console.log(`[Apex Assist] Will attempt to select checkboxes at indices: ${indices.join(', ')}`);
-          
-          for (const index of indices) {
-            if (index >= 0 && index < checkboxes.length) {
-              try {
-                // Try to click the checkbox
-                console.log(`[Apex Assist] Clicking checkbox at index ${index}...`);
-                
-                // Use parent .mat-checkbox element instead of the input directly
-                const parentCheckbox = checkboxes[index].closest('.mat-checkbox');
-                if (parentCheckbox) {
-                  parentCheckbox.click();
-                  console.log(`[Apex Assist] Clicked parent checkbox at index ${index} successfully!`);
-                } else {
-                  // Fallback to direct input click
-                  checkboxes[index].click();
-                  console.log(`[Apex Assist] Directly clicked checkbox at index ${index} successfully!`);
-                }
-                
-                await sleep(700); // Add a delay between selections for visibility
-              } catch (error) {
-                console.error(`[Apex Assist] Error clicking checkbox at index ${index}:`, error);
-                
-                // Try clicking the parent
-                try {
-                  const parent = checkboxes[index].closest('.mat-checkbox');
-                  if (parent) {
-                    parent.click();
-                    console.log(`[Apex Assist] Clicked parent of checkbox at index ${index}`);
-                  }
-                } catch (innerError) {
-                  console.error(`[Apex Assist] Error clicking parent of checkbox at index ${index}:`, innerError);
-                }
-              }
-            } else {
-              console.warn(`[Apex Assist] Index ${index} is out of range (0-${checkboxes.length-1})`);
-            }
-          }
-          
-          // As a last resort, try an alternative selector
-          if (indices.length > 0 && indices.every(i => i < 0 || i >= checkboxes.length)) {
-            console.log("[Apex Assist] Trying alternative checkbox selection method");
-            
-            // Try to find checkboxes by alternative means
-            const options = document.querySelectorAll('.sia-mc-option, .sia-choice, .choice-item');
-            console.log(`[Apex Assist] Found ${options.length} option elements for alternative selection`);
-            
-            for (const index of indices) {
-              if (index >= 0 && index < options.length) {
-                try {
-                  console.log(`[Apex Assist] Clicking option element at index ${index}...`);
-                  options[index].click();
-                  console.log(`[Apex Assist] Clicked option at index ${index} successfully!`);
-                  await sleep(700);
-                } catch (error) {
-                  console.error(`[Apex Assist] Error clicking option at index ${index}:`, error);
-                }
-              }
-            }
-          }
-        }
-      }
+      await selectMultipleChoiceAnswers(answers, answer.letters, sabotage);
     } else {
-      // Original behavior for single choice questions
-      answer.letters.forEach((letter) => {
-        const answerObj = answers.find((a) => sabotage ? a.letter !== letter : a.letter === letter);
-        if (answerObj) {
-          answerObj.select();
-
-          if (sabotage) {
-            console.log("[Apex Assist] Sabotaging this question, correct answer is", answer.letters, "choosing", answerObj.letter, "instead");
-          }
-        }
-      });
+      selectSingleChoiceAnswers(answers, answer.letters, sabotage);
     }
 
     // Wait before submitting
