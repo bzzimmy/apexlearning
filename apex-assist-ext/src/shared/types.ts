@@ -1,5 +1,7 @@
 export type Provider = 'gemini' | 'cerebras' | 'hybrid';
 
+export type Theme = 'light' | 'dark'
+
 export interface Settings {
   provider: Provider;
   geminiApiKey?: string;
@@ -10,6 +12,7 @@ export interface Settings {
   incorrectCount: number;
   attempts: number;
   processImages: boolean;
+  theme?: Theme;
 }
 
 export interface AIResponse {

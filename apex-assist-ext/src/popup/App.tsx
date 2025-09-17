@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { Brain, Network, GraduationCap, Gauge, Play, Square, Settings as SettingsIcon, Info, CheckCircle2, Loader2, XCircle } from 'lucide-react'
+import { applyTheme } from '../shared/theme'
 
 type ApiState = 'pending' | 'connected' | 'disconnected'
 
@@ -55,6 +57,8 @@ export default function App() {
   useEffect(() => {
     chrome.storage.sync.get('settings', (result) => {
       const settings = result.settings || { provider: 'gemini', model: 'gemini-2.5-flash' }
+      // Apply theme from settings (default light)
+      applyTheme((settings.theme as any) || 'light')
       const provider = settings.provider || 'gemini'
       const model = settings.model || 'gemini-2.5-flash'
       if (provider === 'gemini') {
@@ -83,50 +87,81 @@ export default function App() {
     })
   }, [])
 
+  // Compose a compact status chip
+  const { label: statusLabel, classes: statusClasses, Icon: StatusIcon } = (() => {
+    if (!isApex) return { label: 'Not on Apex', classes: 'bg-slate-100 text-slate-700', Icon: Info }
+    if (status === 'running') return { label: 'Running', classes: 'bg-indigo-50 text-indigo-700', Icon: Loader2 }
+    if (status === 'error') return { label: 'Error', classes: 'bg-rose-50 text-rose-700', Icon: XCircle }
+    return { label: 'Ready', classes: 'bg-emerald-50 text-emerald-700', Icon: CheckCircle2 }
+  })()
+
   return (
-    <div className="w-[340px] p-4 space-y-3">
-      <div>
-        <h3 className="text-lg font-semibold">Apex Assist</h3>
-        <p className="text-sm text-gray-500">AI-powered Apex Learning automation</p>
+    <div className="w-[320px] p-0 bg-[var(--background)] text-[var(--foreground)]">
+      {/* Neutral, centered header */}
+      <div className="px-4 pt-4 pb-2 bg-[var(--card)] border-b border-[var(--border)] text-center">
+        <h3 className="text-lg font-semibold tracking-tight text-[var(--foreground)]">Apex Assist</h3>
+        <p className="text-xs opacity-80">AI-powered Apex automation</p>
       </div>
 
-      <div className="rounded border p-2 text-sm flex flex-col gap-1">
-        <div className="flex justify-between"><span className="text-gray-600">Model:</span><span>{modelName}</span></div>
-        <div className="flex justify-between items-center">
-          <span className="text-gray-600">API:</span>
-          <span className="flex items-center gap-2">
-            <span>{api === 'pending' ? 'Checking...' : api === 'connected' ? 'Connected' : 'Disconnected'}</span>
-            <span className={`inline-block h-2 w-2 rounded-full ${api === 'connected' ? 'bg-green-500' : api === 'pending' ? 'bg-yellow-400' : 'bg-red-500'}`}></span>
+      {/* Status chip */}
+      <div className="px-4 pt-3">
+        <div className="flex justify-center">
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusClasses}`}>
+            <StatusIcon size={14} className={StatusIcon === Loader2 ? 'animate-spin' : ''} />
+            <span>Status: {statusLabel}</span>
           </span>
         </div>
       </div>
 
-      <div className="rounded border p-2 text-sm flex flex-col gap-1">
-        <div className="flex justify-between"><span className="text-gray-600">Quiz:</span><span className="truncate max-w-[200px] text-right">{quizName}</span></div>
-        <div className="flex justify-between"><span className="text-gray-600">Progress:</span><span>{quizProgress}</span></div>
-      </div>
+      <div className="p-4 space-y-3">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm p-3 text-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-gray-600"><Brain size={16} /> Model</div>
+            <div className="font-medium text-right truncate max-w-[160px]" title={modelName}>{modelName}</div>
+          </div>
+          <div className="mt-2 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-gray-600"><Network size={16} /> API</div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm">{api === 'pending' ? 'Checking…' : api === 'connected' ? 'Connected' : 'Disconnected'}</span>
+              <span className={`inline-block h-2 w-2 rounded-full ${api === 'connected' ? 'bg-green-500' : api === 'pending' ? 'bg-amber-400' : 'bg-rose-500'}`}></span>
+            </div>
+          </div>
+        </div>
 
-      <div className="flex gap-2">
-        <button
-          className="px-3 py-2 rounded bg-indigo-600 text-white disabled:opacity-50"
-          onClick={start}
-          disabled={status === 'running' || !isApex || quizProgress === 'Completed'}
-        >
-          Start
-        </button>
-        <button
-          className="px-3 py-2 rounded bg-gray-200 text-gray-900 disabled:opacity-50"
-          onClick={stop}
-          disabled={status !== 'running'}
-        >
-          Stop
-        </button>
-      </div>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm p-3 text-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-gray-600"><GraduationCap size={16} /> Quiz</div>
+            <div className="truncate max-w-[160px] text-right" title={quizName}>{quizName}</div>
+          </div>
+          <div className="mt-2 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-gray-600"><Gauge size={16} /> Progress</div>
+            <div className="font-medium">{quizProgress}</div>
+          </div>
+        </div>
 
-      <p className="text-sm">Status: <strong className="uppercase">{!isApex ? 'Not on Apex site' : status}</strong></p>
-      <div className="flex justify-between">
-        <a className="text-indigo-600 hover:underline text-sm" href="../options/index.html" target="_blank" rel="noreferrer">Options</a>
-        <a className="text-indigo-600 hover:underline text-sm" href="../about/index.html" target="_blank" rel="noreferrer">About</a>
+        <div className="flex gap-2">
+          <button
+            className="flex-1 px-3 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] shadow-sm hover:opacity-95 active:opacity-100 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+            onClick={start}
+            disabled={status === 'running' || !isApex || quizProgress === 'Completed'}
+          >
+            <Play size={16} /> Start
+          </button>
+          <button
+            className="flex-1 px-3 py-2 rounded-lg bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:opacity-95 active:opacity-100 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+            onClick={stop}
+            disabled={status !== 'running'}
+          >
+            <Square size={16} /> Stop
+          </button>
+        </div>
+
+        <div className="flex items-center justify-end text-xs text-gray-600">
+          <div className="flex items-center gap-3">
+            <a className="text-indigo-600 hover:underline inline-flex items-center gap-1" href="../options/index.html" target="_blank" rel="noreferrer"><SettingsIcon size={14} /> Options</a>
+            <a className="text-indigo-600 hover:underline inline-flex items-center gap-1" href="../about/index.html" target="_blank" rel="noreferrer"><Info size={14} /> About</a>
+          </div>
+        </div>
       </div>
     </div>
   )

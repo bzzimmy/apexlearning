@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: Settings = {
   incorrectCount: 2,
   attempts: 3,
   processImages: true,
+  theme: 'light',
 }
 
 export function ensureDefaultSettings() {
@@ -27,4 +28,3 @@ export function getSettings(): Promise<Settings> {
     })
   })
 }
-
