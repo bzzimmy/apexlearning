@@ -22,11 +22,14 @@ export async function startAutomation() {
       if (response && response.settings) {
         const s: Settings = response.settings as Settings
         settings = s
-        const apiKey = s.provider === 'cerebras' ? s.cerebrasApiKey : s.geminiApiKey
-        if (!apiKey) {
-          console.error(`[Apex Assist] ${s.provider} API key not set. Please set it in options.`)
-          resolve({ success: false, error: `${s.provider} API key not set` })
-          return
+        // For hybrid, defer API key selection until we know if images are used.
+        if (s.provider !== 'hybrid') {
+          const apiKey = s.provider === 'cerebras' ? s.cerebrasApiKey : s.geminiApiKey
+          if (!apiKey) {
+            console.error(`[Apex Assist] ${s.provider} API key not set. Please set it in options.`)
+            resolve({ success: false, error: `${s.provider} API key not set` })
+            return
+          }
         }
         attempts = 0
         incorrectAnswers = 0
@@ -207,9 +210,32 @@ async function runAutomation() {
 
   try {
     if (!settings) throw new Error('Settings not loaded')
-    const apiKey = settings.provider === 'cerebras' ? settings.cerebrasApiKey! : settings.geminiApiKey!
-    const provider = settings.provider
-    const model = settings.model
+    // Decide provider/model/apiKey per-question (hybrid) or from settings
+    let provider: 'gemini' | 'cerebras'
+    let model: string
+    let apiKey: string | undefined
+
+    if (settings.provider === 'hybrid') {
+      if (images.length > 0) {
+        provider = 'gemini'
+        model = 'gemini-2.5-flash'
+        apiKey = settings.geminiApiKey
+      } else {
+        provider = 'cerebras'
+        model = 'qwen-3-235b-a22b-instruct-2507'
+        apiKey = settings.cerebrasApiKey
+      }
+    } else {
+      provider = settings.provider === 'cerebras' ? 'cerebras' : 'gemini'
+      model = settings.model
+      apiKey = provider === 'cerebras' ? settings.cerebrasApiKey : settings.geminiApiKey
+    }
+
+    if (!apiKey) {
+      logger.error(`Missing API key for selected provider: ${provider}. Please set it in Options.`)
+      automationRunning = false
+      return
+    }
     logger.info('API Request sent')
     const response: any = await new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(
@@ -225,7 +251,22 @@ async function runAutomation() {
     // Concatenate all text parts for robustness
     const parts = response.candidates?.[0]?.content?.parts || []
     const responseText = parts.map((p: any) => p?.text || '').join('\n')
-    const answer = parseAIResponseText(responseText, isMC, answers)
+    let answer: any
+    try {
+      answer = parseAIResponseText(responseText, isMC, answers)
+    } catch (err) {
+      // Extra diagnostics for Gemini responses to help debug formatting/safety issues
+      const finish = response.candidates?.[0]?.finishReason
+      const promptFeedback = response.promptFeedback
+      const safety = response.candidates?.[0]?.safetyRatings
+      logger.warn('[Apex Assist] Parse failed. Provider response diagnostics:')
+      logger.warn(` finishReason=${String(finish || 'n/a')}; parts=${parts.length}`)
+      if (promptFeedback) logger.warn(` promptFeedback=${JSON.stringify(promptFeedback)}`)
+      if (safety) logger.warn(` safetyRatings=${JSON.stringify(safety)}`)
+      const snippet = (responseText || '').slice(0, 400)
+      logger.warn(` response snippet: ${snippet}`)
+      throw err
+    }
     logger.info('API Response parsed')
     if (!answer || !answer.letters || answer.letters.length === 0) {
       logger.warn('Failed to retrieve a valid answer')
