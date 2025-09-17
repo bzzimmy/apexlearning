@@ -75,3 +75,31 @@ html, body {
 .border-token { border-color: var(--border); }
 .btn-primary { background: var(--primary); color: var(--primary-foreground); }
 .btn-secondary { background: var(--secondary); color: var(--secondary-foreground); }
+
+/* Form elements theming (inputs, selects, textareas) */
+input[type="text"],
+input[type="password"],
+input[type="number"],
+select,
+textarea {
+  background-color: var(--input);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted-foreground);
+}
+
+/* Disabled appearance stays readable in dark mode */
+input[disabled], select[disabled], textarea[disabled] {
+  opacity: 0.7;
+}
+
+/* Native controls (checkboxes, radios, range) */
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
+  accent-color: var(--primary);
+}

@@ -89,10 +89,10 @@ export default function App() {
 
   // Compose a compact status chip
   const { label: statusLabel, classes: statusClasses, Icon: StatusIcon } = (() => {
-    if (!isApex) return { label: 'Not on Apex', classes: 'bg-slate-100 text-slate-700', Icon: Info }
-    if (status === 'running') return { label: 'Running', classes: 'bg-indigo-50 text-indigo-700', Icon: Loader2 }
-    if (status === 'error') return { label: 'Error', classes: 'bg-rose-50 text-rose-700', Icon: XCircle }
-    return { label: 'Ready', classes: 'bg-emerald-50 text-emerald-700', Icon: CheckCircle2 }
+    if (!isApex) return { label: 'Not on Apex', classes: 'bg-[var(--muted)] text-[var(--muted-foreground)]', Icon: Info }
+    if (status === 'running') return { label: 'Running', classes: 'bg-[var(--primary)] text-[var(--primary-foreground)]', Icon: Loader2 }
+    if (status === 'error') return { label: 'Error', classes: 'bg-[var(--destructive)] text-[var(--destructive-foreground)]', Icon: XCircle }
+    return { label: 'Ready', classes: 'bg-[var(--secondary)] text-[var(--secondary-foreground)]', Icon: CheckCircle2 }
   })()
 
   return (
@@ -116,11 +116,11 @@ export default function App() {
       <div className="p-4 space-y-3">
         <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm p-3 text-sm">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-gray-600"><Brain size={16} /> Model</div>
+            <div className="flex items-center gap-2 text-[var(--muted-foreground)]"><Brain size={16} /> Model</div>
             <div className="font-medium text-right truncate max-w-[160px]" title={modelName}>{modelName}</div>
           </div>
           <div className="mt-2 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-gray-600"><Network size={16} /> API</div>
+            <div className="flex items-center gap-2 text-[var(--muted-foreground)]"><Network size={16} /> API</div>
             <div className="flex items-center gap-2">
               <span className="text-sm">{api === 'pending' ? 'Checking…' : api === 'connected' ? 'Connected' : 'Disconnected'}</span>
               <span className={`inline-block h-2 w-2 rounded-full ${api === 'connected' ? 'bg-green-500' : api === 'pending' ? 'bg-amber-400' : 'bg-rose-500'}`}></span>
@@ -130,11 +130,11 @@ export default function App() {
 
         <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm p-3 text-sm">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-gray-600"><GraduationCap size={16} /> Quiz</div>
+            <div className="flex items-center gap-2 text-[var(--muted-foreground)]"><GraduationCap size={16} /> Quiz</div>
             <div className="truncate max-w-[160px] text-right" title={quizName}>{quizName}</div>
           </div>
           <div className="mt-2 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-gray-600"><Gauge size={16} /> Progress</div>
+            <div className="flex items-center gap-2 text-[var(--muted-foreground)]"><Gauge size={16} /> Progress</div>
             <div className="font-medium">{quizProgress}</div>
           </div>
         </div>
@@ -156,10 +156,10 @@ export default function App() {
           </button>
         </div>
 
-        <div className="flex items-center justify-end text-xs text-gray-600">
-          <div className="flex items-center gap-3">
-            <a className="text-indigo-600 hover:underline inline-flex items-center gap-1" href="../options/index.html" target="_blank" rel="noreferrer"><SettingsIcon size={14} /> Options</a>
-            <a className="text-indigo-600 hover:underline inline-flex items-center gap-1" href="../about/index.html" target="_blank" rel="noreferrer"><Info size={14} /> About</a>
+        <div className="flex items-center justify-center text-xs">
+          <div className="flex items-center gap-2">
+            <a className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:opacity-90" href="../options/index.html" target="_blank" rel="noreferrer"><SettingsIcon size={14} /> Options</a>
+            <a className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:opacity-90" href="../about/index.html" target="_blank" rel="noreferrer"><Info size={14} /> About</a>
           </div>
         </div>
       </div>
