@@ -1,4 +1,4 @@
-import { captureScreen } from './images'
+import { captureScreen, questionHasInlineMedia } from './images'
 import { buildPrompt } from './prompt'
 import { parseProgress } from './status'
 import { getAnswers, getQuestion, getAnswersMultipleChoice, isMultipleChoiceQuestion } from './scrape'
@@ -183,12 +183,16 @@ async function runAutomation() {
   const answers = isMC ? getAnswersMultipleChoice() : getAnswers()
   const progress = parseProgress()
   logger.info('Question Type Detected: ' + (isMC ? 'Multiple Choice' : 'Single Choice'))
-  const images = settings?.processImages ? await captureScreen().catch(() => []) : []
+  const hasInlineMedia = settings?.processImages ? questionHasInlineMedia() : false
+  const images = hasInlineMedia ? await captureScreen().catch(() => []) : []
   const formattedQuery = buildPrompt(question, answers)
 
   logger.info(`Question ${progress.current} of ${progress.total}`)
   logger.debug(formattedQuery)
   logger.info(`Images: ${images.length}`)
+  if (settings?.provider === 'hybrid') {
+    logger.info(`Inline media detected: ${hasInlineMedia}`)
+  }
 
   // Build AI input with instructions
   let input = `${formattedQuery}\n\n`
@@ -225,6 +229,8 @@ async function runAutomation() {
         model = 'qwen-3-235b-a22b-instruct-2507'
         apiKey = settings.cerebrasApiKey
       }
+      // Log the chosen model/provider for hybrid routing visibility
+      logger.info(`Model selected: ${model} (${provider})`)
     } else {
       provider = settings.provider === 'cerebras' ? 'cerebras' : 'gemini'
       model = settings.model
