@@ -16,7 +16,13 @@ export default function App() {
     const check = () => {
       chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
         if (!tab) return
-        const onApex = Boolean(tab.url && (tab.url.includes('apexvs.com') || tab.url.includes('course.apexlearning.com')))
+        const onApex = Boolean(
+          tab.url && (
+            tab.url.includes('apexvs.com') ||
+            tab.url.includes('course.apexlearning.com') ||
+            tab.url.includes('course.apex.app.edmentum.com')
+          )
+        )
         setIsApex(onApex)
         if (!tab.id) return
         chrome.tabs.sendMessage(tab.id, { action: 'getStatus' }, (response) => {

@@ -13,7 +13,11 @@ chrome.commands.onCommand.addListener((command) => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tab = tabs[0]
       if (!tab?.id || !tab.url) return
-      if (tab.url.includes('apexvs.com') || tab.url.includes('course.apexlearning.com')) {
+      if (
+        tab.url.includes('apexvs.com') ||
+        tab.url.includes('course.apexlearning.com') ||
+        tab.url.includes('course.apex.app.edmentum.com')
+      ) {
         chrome.tabs.sendMessage(tab.id, { action: 'toggleAutomation' })
       }
     })
@@ -24,4 +28,3 @@ chrome.commands.onCommand.addListener((command) => {
 registerMessageHandlers()
 
 export {}
-

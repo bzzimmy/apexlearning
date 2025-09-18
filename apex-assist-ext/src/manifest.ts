@@ -18,9 +18,23 @@ export default {
     type: 'module' as const,
   },
   content_scripts: [
+    // Early anti-cheat bypass hooks
     {
       matches: [
         '*://*.course.apexlearning.com/*',
+        '*://course.apex.app.edmentum.com/*',
+        '*://*.apexvs.com/*',
+      ],
+      js: ['src/content/bypass.ts'],
+      run_at: 'document_start' as const,
+      all_frames: true as const,
+      match_about_blank: true as const,
+    },
+    // Main automation content script
+    {
+      matches: [
+        '*://*.course.apexlearning.com/*',
+        '*://course.apex.app.edmentum.com/*',
         '*://*.apexvs.com/*',
       ],
       js: ['src/content/index.ts'],
@@ -43,6 +57,7 @@ export default {
   },
   host_permissions: [
     '*://*.course.apexlearning.com/*',
+    '*://course.apex.app.edmentum.com/*',
     '*://*.apexvs.com/*',
   ],
 } satisfies chrome.runtime.ManifestV3;
