@@ -49,15 +49,17 @@ export async function callGemini({ input, images, apiKey, model, allowedLetters,
               item: { type: 'integer', minimum: 1, maximum: itemsCount },
             },
             required: ['row', 'item'],
-            additionalProperties: false,
+            // Keep key order stable (supported)
+            propertyOrdering: ['row', 'item'],
           },
           minItems: 1,
           maxItems: rows,
         },
-        explanation: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+        // Optional; omit from required (no anyOf/null)
+        explanation: { type: 'string' },
       },
       required: ['pairs'],
-      additionalProperties: false,
+      // Supported; helpful for deterministic order
       propertyOrdering: ['pairs', 'explanation'],
     }
   } else {
@@ -71,6 +73,7 @@ export async function callGemini({ input, images, apiKey, model, allowedLetters,
           minItems: 1,
           maxItems,
         },
+        // Optional; omit from required
         explanation: { type: 'string' },
       },
       required: ['letters'],
@@ -78,8 +81,8 @@ export async function callGemini({ input, images, apiKey, model, allowedLetters,
     }
   }
 
-  // Disable internal thinking for 2.5 models
-  if (typeof modelToUse === 'string' && modelToUse.startsWith('gemini-2.5')) {
+  // Disable internal thinking for 2.5 Flash models (Pro cannot be disabled)
+  if (typeof modelToUse === 'string' && modelToUse.startsWith('gemini-2.5-flash')) {
     config.thinkingConfig = { thinkingBudget: 0 }
   }
 
