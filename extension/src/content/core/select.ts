@@ -1,4 +1,4 @@
-import type { AnswerOption } from './scrape'
+import type { AnswerOption } from '../scrape'
 
 export async function selectMultiple(answers: AnswerOption[], letters: string[]) {
   // Try by letter mapping first

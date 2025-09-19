@@ -1,6 +1,6 @@
 /// <reference types="chrome" />
 import { startAutomation, stopAutomation, isRunning } from './automation'
-import { getStatus } from './status'
+import { getStatus } from './core/status'
 import { startStudyAutoclick } from './study'
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

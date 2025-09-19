@@ -3,7 +3,7 @@ export function getQuizName(): string {
   const breadcrumbElement = document.querySelector("[class*='toolbar-title-wrapper']") as HTMLElement | null
   if (breadcrumbElement) {
     const fullText = (breadcrumbElement.textContent || '').trim()
-    const quizMatch = fullText.match(/([0-9.]+\s+)?Quiz:\s*(.*)/i)
+    const quizMatch = fullText.match(/([0-9.+\-\s]+)?\s*Quiz:\s*(.*)/i)
     if (quizMatch && quizMatch[2]) {
       return quizMatch[2].trim()
     }

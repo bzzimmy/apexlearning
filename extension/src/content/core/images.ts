@@ -1,4 +1,4 @@
-import type { InlineImage } from '../shared/types'
+import type { InlineImage } from '../../shared/types'
 
 export async function captureScreen(): Promise<InlineImage[]> {
   return new Promise((resolve, reject) => {
