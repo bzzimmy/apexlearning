@@ -1,7 +1,8 @@
 import { captureScreen, questionHasInlineMedia } from './images'
-import { buildPrompt } from './prompt'
+import { buildPrompt, buildSortPrompt } from './prompt'
 import { parseProgress } from './status'
 import { getAnswers, getQuestion, getAnswersMultipleChoice, isMultipleChoiceQuestion } from './scrape'
+import { isSortQuestion, getSortItems, getSortSlots, performSortPairs } from './sort'
 import type { AnswerOption } from './scrape'
 import type { Settings } from '../shared/types'
 import { selectMultiple, selectSingle } from './select'
@@ -111,6 +112,37 @@ function parseAIResponseText(responseText: string, isMultipleChoice: boolean, an
   throw new Error('Could not parse JSON from provider response')
 }
 
+function parseSortResponseText(responseText: string): { pairs: Array<{ row: number; item: number }> } {
+  // First try strict parse
+  try {
+    const parsed = JSON.parse(responseText)
+    if (Array.isArray(parsed?.pairs)) return { pairs: parsed.pairs }
+  } catch {}
+  // Try fenced
+  const fence = /```(?:json)?\s*([\s\S]*?)```/i.exec(responseText)
+  const texts: string[] = []
+  if (fence && fence[1]) texts.push(fence[1])
+  texts.push(responseText)
+  for (const t of texts) {
+    const json = extractBalancedJson(t)
+    if (json) {
+      try {
+        const parsed = JSON.parse(json)
+        if (Array.isArray(parsed?.pairs)) return { pairs: parsed.pairs }
+      } catch {}
+    }
+  }
+  // Heuristic: lines like 1->3
+  const pairs: Array<{ row: number; item: number }> = []
+  const m = Array.from(responseText.matchAll(/(\d+)\s*(?:-|=>|->|:)?\s*(\d+)/g))
+  for (const g of m) {
+    const row = parseInt(g[1], 10); const item = parseInt(g[2], 10)
+    if (row && item) pairs.push({ row, item })
+  }
+  if (pairs.length) return { pairs }
+  throw new Error('Could not parse sort pairs from provider response')
+}
+
 // Find a balanced JSON object substring starting at any '{'
 function extractBalancedJson(text: string): string | null {
   for (let i = 0; i < text.length; i++) {
@@ -182,10 +214,22 @@ async function runAutomation() {
   const isMC = isMultipleChoiceQuestion()
   const answers = isMC ? getAnswersMultipleChoice() : getAnswers()
   const progress = parseProgress()
-  logger.info('Question Type Detected: ' + (isMC ? 'Multiple Choice' : 'Single Choice'))
+  const isSort = isSortQuestion()
+  logger.info('Question Type Detected: ' + (isSort ? 'Sort' : (isMC ? 'Multiple Choice' : 'Single Choice')))
   const hasInlineMedia = settings?.processImages ? questionHasInlineMedia() : false
   const images = hasInlineMedia ? await captureScreen().catch(() => []) : []
-  const formattedQuery = buildPrompt(question, answers)
+  let formattedQuery = ''
+  if (isSort) {
+    const items = getSortItems()
+    const slots = getSortSlots()
+    formattedQuery = buildSortPrompt(
+      question,
+      items.map((i, idx) => ({ index: idx + 1, text: i.text })),
+      slots.map((s, idx) => ({ index: idx + 1, text: s.context }))
+    )
+  } else {
+    formattedQuery = buildPrompt(question, answers)
+  }
 
   logger.info(`Question ${progress.current} of ${progress.total}`)
   logger.debug(formattedQuery)
@@ -199,7 +243,7 @@ async function runAutomation() {
   if (images.length > 0) {
     input += 'Note: An image of the entire screen is provided. Analyze the visual context with the text.\n\n'
   }
-  if (isMC) {
+  if (!isSort && isMC) {
     input += 'Task: This is a multiple-choice question where MULTIPLE answers can be correct. You MUST identify ALL correct options.\n'
     input += 'Return ALL correct options in an array, even if there are multiple correct answers.\n'
     input += 'Provide your answer in the format: {"letters": ["A", "C"], "explanation": "[Few words why]"}\n'
@@ -207,7 +251,7 @@ async function runAutomation() {
     input += 'Respond ONLY with a single JSON object as described. Do not include any other text.\n'
     input += '\nFor reference, here are the options:\n'
     answers.forEach((a) => { input += `${a.letter}. ${a.content}\n` })
-  } else {
+  } else if (!isSort) {
     input += 'Task: Identify the single best option. Provide your answer in the format: {"letters": ["A"], "explanation": "[Few words why]"}\n'
     input += 'Respond ONLY with a single JSON object as described. Do not include any other text.\n'
   }
@@ -245,7 +289,18 @@ async function runAutomation() {
     logger.info('API Request sent')
     const response: any = await new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(
-        { action: 'callAIProvider', input, images, provider, apiKey, model, allowedLetters: answers.map(a => a.letter), isMultipleChoice: isMC },
+        {
+          action: 'callAIProvider',
+          input,
+          images,
+          provider,
+          apiKey,
+          model,
+          allowedLetters: isSort ? undefined : answers.map(a => a.letter),
+          isMultipleChoice: isMC,
+          responseMode: isSort ? 'sort' : 'letters',
+          sortCounts: isSort ? { rows: getSortSlots().length, items: getSortItems().length } : undefined,
+        },
         (res) => {
           if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message))
           if (!res?.success) return reject(new Error(res?.error || 'Unknown provider error'))
@@ -257,50 +312,76 @@ async function runAutomation() {
     // Concatenate all text parts for robustness
     const parts = response.candidates?.[0]?.content?.parts || []
     const responseText = parts.map((p: any) => p?.text || '').join('\n')
-    let answer: any
-    try {
-      answer = parseAIResponseText(responseText, isMC, answers)
-    } catch (err) {
-      // Extra diagnostics for Gemini responses to help debug formatting/safety issues
-      const finish = response.candidates?.[0]?.finishReason
-      const promptFeedback = response.promptFeedback
-      const safety = response.candidates?.[0]?.safetyRatings
-      logger.warn('[Apex Assist] Parse failed. Provider response diagnostics:')
-      logger.warn(` finishReason=${String(finish || 'n/a')}; parts=${parts.length}`)
-      if (promptFeedback) logger.warn(` promptFeedback=${JSON.stringify(promptFeedback)}`)
-      if (safety) logger.warn(` safetyRatings=${JSON.stringify(safety)}`)
-      const snippet = (responseText || '').slice(0, 400)
-      logger.warn(` response snippet: ${snippet}`)
-      throw err
-    }
-    logger.info('API Response parsed')
-    if (!answer || !answer.letters || answer.letters.length === 0) {
-      logger.warn('Failed to retrieve a valid answer')
-      setTimeout(() => { if (automationRunning) runAutomation() }, 1000)
-      return
-    }
-
-    attempts = 0
-    const sabotage = shouldSabotage(progress.total)
-    let lettersToSelect = answer.letters as string[]
-
-    if (!isMC) {
-      const chosen = sabotage ? answers.find((a) => a.letter !== lettersToSelect[0])?.letter || lettersToSelect[0] : lettersToSelect[0]
-      if (loopStopped || !automationRunning) { logger.info('Stop detected before selection'); return }
-      logger.info('Selecting answers')
-      selectSingle(answers, chosen)
-    } else {
-      if (sabotage) {
-        const setCorrect = new Set(lettersToSelect)
-        const allLetters = answers.map((a) => a.letter)
-        const incorrect = allLetters.filter((l) => !setCorrect.has(l))
-        if (lettersToSelect.length > 0) {
-          lettersToSelect = [lettersToSelect[0], ...incorrect.slice(0, 1)]
-        }
+    if (isSort) {
+      let pairs: Array<{ row: number; item: number }>
+      try {
+        pairs = parseSortResponseText(responseText).pairs
+      } catch (err) {
+        const finish = response.candidates?.[0]?.finishReason
+        const promptFeedback = response.promptFeedback
+        const safety = response.candidates?.[0]?.safetyRatings
+        logger.warn('[Apex Assist] Sort parse failed diagnostics:')
+        logger.warn(` finishReason=${String(finish || 'n/a')}; parts=${parts.length}`)
+        if (promptFeedback) logger.warn(` promptFeedback=${JSON.stringify(promptFeedback)}`)
+        if (safety) logger.warn(` safetyRatings=${JSON.stringify(safety)}`)
+        const snippet = (responseText || '').slice(0, 400)
+        logger.warn(` response snippet: ${snippet}`)
+        throw err
+      }
+      if (!pairs?.length) {
+        logger.warn('No sort pairs returned')
+        setTimeout(() => { if (automationRunning) runAutomation() }, 1000)
+        return
       }
       if (loopStopped || !automationRunning) { logger.info('Stop detected before selection'); return }
-      logger.info('Selecting answers')
-      await selectMultiple(answers, lettersToSelect)
+      logger.info('Placing items')
+      const items = getSortItems()
+      const slots = getSortSlots()
+      await performSortPairs(pairs, items, slots)
+    } else {
+      let answer: any
+      try {
+        answer = parseAIResponseText(responseText, isMC, answers)
+      } catch (err) {
+        // Extra diagnostics for Gemini responses to help debug formatting/safety issues
+        const finish = response.candidates?.[0]?.finishReason
+        const promptFeedback = response.promptFeedback
+        const safety = response.candidates?.[0]?.safetyRatings
+        logger.warn('[Apex Assist] Parse failed. Provider response diagnostics:')
+        logger.warn(` finishReason=${String(finish || 'n/a')}; parts=${parts.length}`)
+        if (promptFeedback) logger.warn(` promptFeedback=${JSON.stringify(promptFeedback)}`)
+        if (safety) logger.warn(` safetyRatings=${JSON.stringify(safety)}`)
+        const snippet = (responseText || '').slice(0, 400)
+        logger.warn(` response snippet: ${snippet}`)
+        throw err
+      }
+      logger.info('API Response parsed')
+      if (!answer || !answer.letters || answer.letters.length === 0) {
+        logger.warn('Failed to retrieve a valid answer')
+        setTimeout(() => { if (automationRunning) runAutomation() }, 1000)
+        return
+      }
+      attempts = 0
+      const sabotage = shouldSabotage(progress.total)
+      let lettersToSelect = answer.letters as string[]
+      if (!isMC) {
+        const chosen = sabotage ? answers.find((a) => a.letter !== lettersToSelect[0])?.letter || lettersToSelect[0] : lettersToSelect[0]
+        if (loopStopped || !automationRunning) { logger.info('Stop detected before selection'); return }
+        logger.info('Selecting answers')
+        selectSingle(answers, chosen)
+      } else {
+        if (sabotage) {
+          const setCorrect = new Set(lettersToSelect)
+          const allLetters = answers.map((a) => a.letter)
+          const incorrect = allLetters.filter((l) => !setCorrect.has(l))
+          if (lettersToSelect.length > 0) {
+            lettersToSelect = [lettersToSelect[0], ...incorrect.slice(0, 1)]
+          }
+        }
+        if (loopStopped || !automationRunning) { logger.info('Stop detected before selection'); return }
+        logger.info('Selecting answers')
+        await selectMultiple(answers, lettersToSelect)
+      }
     }
 
     // Wait before submitting

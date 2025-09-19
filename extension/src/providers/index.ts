@@ -1,4 +1,4 @@
-import type { AIResponse, InlineImage } from '../shared/types'
+import type { InlineImage } from '../shared/types'
 import { callGemini } from './gemini'
 import { callCerebras } from './cerebras'
 
@@ -12,12 +12,14 @@ export interface ProviderCallArgs {
   model: string
   allowedLetters?: string[]
   isMultipleChoice?: boolean
+  responseMode?: 'letters' | 'sort'
+  sortCounts?: { rows: number; items: number }
 }
 
-export async function callProvider(args: ProviderCallArgs): Promise<AIResponse> {
-  const { provider, input, images, apiKey, model, allowedLetters, isMultipleChoice } = args
-  if (provider === 'gemini') return callGemini({ input, images, apiKey, model, allowedLetters, isMultipleChoice })
-  if (provider === 'cerebras') return callCerebras({ input, images, apiKey, model, allowedLetters, isMultipleChoice })
+export async function callProvider(args: ProviderCallArgs): Promise<any> {
+  const { provider } = args
+  if (provider === 'gemini') return callGemini(args)
+  if (provider === 'cerebras') return callCerebras(args)
   throw new Error(`Unsupported provider: ${provider}`)
 }
 

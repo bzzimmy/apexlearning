@@ -20,6 +20,12 @@ export interface AIResponse {
   explanation?: string;
 }
 
+// Sort question provider response shape
+export interface SortAIResponse {
+  pairs: Array<{ row: number; item: number }>; // 1-based indices
+  explanation?: string | null;
+}
+
 export interface InlineImage {
   mimeType: string;
   data: string; // base64 without prefix
@@ -42,6 +48,9 @@ export type BackgroundMessage =
       model: string;
       allowedLetters?: string[];
       isMultipleChoice?: boolean;
+      // When present, providers will use a different response schema
+      responseMode?: 'letters' | 'sort';
+      sortCounts?: { rows: number; items: number };
     }
   | { action: 'captureVisibleTab' }
   | {

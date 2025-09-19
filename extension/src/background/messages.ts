@@ -24,9 +24,9 @@ export function registerMessageHandlers() {
     }
 
     if (message.action === 'callAIProvider') {
-      const { input, images = [], provider, apiKey, model, allowedLetters, isMultipleChoice } = message
+      const { input, images = [], provider, apiKey, model, allowedLetters, isMultipleChoice, responseMode, sortCounts } = message
       const p = (provider === 'gemini' || provider === 'cerebras') ? provider : 'gemini'
-      callProvider({ provider: p, input, images, apiKey, model, allowedLetters, isMultipleChoice })
+      callProvider({ provider: p, input, images, apiKey, model, allowedLetters, isMultipleChoice, responseMode, sortCounts })
         .then((data) => sendResponse({ success: true, data }))
         .catch((error) => sendResponse({ success: false, error: error?.message || String(error) }))
       return true

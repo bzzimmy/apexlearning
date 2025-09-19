@@ -1,9 +1,7 @@
-import type { InlineImage } from '../shared/types'
-
-interface Args { input: string; images: InlineImage[]; apiKey: string; model: string; allowedLetters?: string[]; isMultipleChoice?: boolean }
+import type { ProviderCallArgs } from './index'
 
 // Returns a Gemini-like response shape so content parsing stays unified
-export async function callCerebras({ input, images, apiKey, model, allowedLetters, isMultipleChoice }: Args): Promise<any> {
+export async function callCerebras({ input, images, apiKey, model, allowedLetters, isMultipleChoice, responseMode, sortCounts }: ProviderCallArgs): Promise<any> {
   if (images && images.length > 0) {
     console.log('[Cerebras] Warning: images are ignored by Cerebras in this flow')
   }
@@ -16,29 +14,64 @@ export async function callCerebras({ input, images, apiKey, model, allowedLetter
   const maxItems = isMultipleChoice ? lettersEnum.length : 1
 
   // Structured outputs via json_schema (strict)
-  const response_format = {
-    type: 'json_schema',
-    json_schema: {
-      name: 'answer_schema',
-      strict: true,
-      schema: {
-        type: 'object',
-        properties: {
-          letters: {
-            type: 'array',
-            items: { type: 'string', enum: lettersEnum },
-            minItems: 1,
-            maxItems,
-          },
-          explanation: {
-            anyOf: [ { type: 'string' }, { type: 'null' } ]
+  const response_format = (() => {
+    if (responseMode === 'sort') {
+      const rows = Math.max(1, Number(sortCounts?.rows || 10))
+      const itemsCount = Math.max(1, Number(sortCounts?.items || 10))
+      return {
+        type: 'json_schema',
+        json_schema: {
+          name: 'sort_pairs',
+          strict: true,
+          schema: {
+            type: 'object',
+            properties: {
+              pairs: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    row: { type: 'integer', minimum: 1, maximum: rows },
+                    item: { type: 'integer', minimum: 1, maximum: itemsCount },
+                  },
+                  required: ['row', 'item'],
+                  additionalProperties: false,
+                },
+                minItems: 1,
+                maxItems: rows,
+              },
+              explanation: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+            },
+            required: ['pairs'],
+            additionalProperties: false,
           }
-        },
-        required: ['letters', 'explanation'],
-        additionalProperties: false,
-      }
+        }
+      } as const
     }
-  }
+    return {
+      type: 'json_schema',
+      json_schema: {
+        name: 'answer_schema',
+        strict: true,
+        schema: {
+          type: 'object',
+          properties: {
+            letters: {
+              type: 'array',
+              items: { type: 'string', enum: lettersEnum },
+              minItems: 1,
+              maxItems,
+            },
+            explanation: {
+              anyOf: [ { type: 'string' }, { type: 'null' } ]
+            }
+          },
+          required: ['letters', 'explanation'],
+          additionalProperties: false,
+        }
+      }
+    } as const
+  })()
 
   const requestBody = {
     model,

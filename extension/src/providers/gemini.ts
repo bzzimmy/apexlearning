@@ -1,10 +1,8 @@
-import type { InlineImage } from '../shared/types'
+import type { ProviderCallArgs } from './index'
 import { GoogleGenAI } from '@google/genai'
 
-interface Args { input: string; images: InlineImage[]; apiKey: string; model: string; allowedLetters?: string[]; isMultipleChoice?: boolean }
-
 // Returns the raw Gemini response JSON (with candidates/content/parts/text)
-export async function callGemini({ input, images, apiKey, model, allowedLetters, isMultipleChoice }: Args): Promise<any> {
+export async function callGemini({ input, images, apiKey, model, allowedLetters, isMultipleChoice, responseMode, sortCounts }: ProviderCallArgs): Promise<any> {
   // Use the official GenAI SDK to access the v1 contract with config.*
   const ai = new GoogleGenAI({ apiKey })
   // Model is pinned to gemini-2.5-flash below; reference to satisfy noUnusedParameters
@@ -32,8 +30,39 @@ export async function callGemini({ input, images, apiKey, model, allowedLetters,
     topK: 40,
     topP: 0.95,
     maxOutputTokens: 8192,
-    responseMimeType: 'application/json',
-    responseSchema: {
+  }
+
+  if (responseMode === 'sort') {
+    // Structured schema for sort mapping
+    const rows = Math.max(1, Number(sortCounts?.rows || 10))
+    const itemsCount = Math.max(1, Number(sortCounts?.items || 10))
+    config.responseMimeType = 'application/json'
+    config.responseSchema = {
+      type: 'object',
+      properties: {
+        pairs: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              row: { type: 'integer', minimum: 1, maximum: rows },
+              item: { type: 'integer', minimum: 1, maximum: itemsCount },
+            },
+            required: ['row', 'item'],
+            additionalProperties: false,
+          },
+          minItems: 1,
+          maxItems: rows,
+        },
+        explanation: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+      },
+      required: ['pairs'],
+      additionalProperties: false,
+      propertyOrdering: ['pairs', 'explanation'],
+    }
+  } else {
+    config.responseMimeType = 'application/json'
+    config.responseSchema = {
       type: 'object',
       properties: {
         letters: {
@@ -46,7 +75,7 @@ export async function callGemini({ input, images, apiKey, model, allowedLetters,
       },
       required: ['letters'],
       propertyOrdering: ['letters', 'explanation'],
-    },
+    }
   }
 
   // Disable internal thinking for 2.5 models
