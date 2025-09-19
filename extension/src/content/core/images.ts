@@ -30,15 +30,31 @@ export function questionHasInlineMedia(): boolean {
     if (answersRoot) roots.push(answersRoot)
   }
 
-  // Generic question wrapper fallbacks
-  const wrapper = document.querySelector(
-    '.kp-question, .assessment-question, .sia-question, .question-content'
-  )
-  if (wrapper) roots.push(wrapper)
+  // Helper utilities for visibility/size checks
+  const MIN_DIM = 96
+  const isVisible = (el: HTMLElement) => {
+    const cs = window.getComputedStyle(el)
+    if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity || '1') === 0) return false
+    const r = el.getBoundingClientRect()
+    return r.width >= 1 && r.height >= 1
+  }
+  const passesSize = (el: HTMLElement) => {
+    const r = el.getBoundingClientRect()
+    return Math.min(r.width, r.height) >= MIN_DIM
+  }
 
   const hasMediaIn = (root: Element) => {
-    // Direct media elements
-    if (root.querySelector('img, svg, canvas, video, picture')) return true
+    // Direct media elements (exclude svg to avoid icons)
+    const media = Array.from(root.querySelectorAll<HTMLElement>('img, canvas, video, picture'))
+    for (const el of media) {
+      if (!isVisible(el)) continue
+      if (el.tagName.toLowerCase() === 'img') {
+        const img = el as HTMLImageElement
+        const natOk = (img.naturalWidth || 0) >= MIN_DIM && (img.naturalHeight || 0) >= MIN_DIM
+        if (natOk) return true
+      }
+      if (passesSize(el)) return true
+    }
 
     // Check for significant CSS background images on a limited subset of elements
     const nodes = Array.from(root.querySelectorAll<HTMLElement>('*')).slice(0, 300)
