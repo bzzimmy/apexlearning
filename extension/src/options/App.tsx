@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Settings, Theme } from '../shared/types'
 import { applyTheme } from '../shared/theme'
 import { Boxes, Palette, Timer, AlertTriangle, Hash, Repeat, Image as ImageIcon, SatelliteDish, KeySquare, HelpCircle, Eye, EyeOff } from 'lucide-react'
@@ -122,9 +122,9 @@ export default function App() {
     const color = state === 'connected' ? 'bg-green-500' : state === 'pending' ? 'bg-amber-500' : state === 'missing' ? 'bg-gray-400' : state === 'idle' ? 'bg-gray-300' : 'bg-rose-500'
     const text = state === 'connected' ? 'Connected' : state === 'pending' ? 'Checking…' : state === 'missing' ? 'Missing key' : state === 'idle' ? '-' : 'Disconnected'
     return (
-      <div className="inline-flex items-center gap-2 text-xs min-w-0">
+      <div className="inline-flex items-center gap-2 text-xs max-w-full">
         <span className="text-muted-foreground shrink-0">{label}</span>
-        <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 whitespace-nowrap shrink-0">
+        <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 whitespace-nowrap">
           <span className={`h-1.5 w-1.5 rounded-full ${color}`} />
           <span>{text}</span>
         </span>
@@ -132,11 +132,6 @@ export default function App() {
     )
   }
 
-  const providerIcon = useMemo(() => {
-    if (settings.provider === 'gemini') return chrome.runtime.getURL('images/gemini-color.png')
-    if (settings.provider === 'cerebras') return chrome.runtime.getURL('images/cerebras-color.png')
-    return ''
-  }, [settings.provider])
 
   return (
     <TooltipProvider disableHoverableContent>
@@ -165,18 +160,21 @@ export default function App() {
                   <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-2">
                     <Label className="inline-flex items-center gap-1.5"><SatelliteDish size={14} /> Provider</Label>
                     <Select value={settings.provider} onValueChange={(v: Settings['provider']) => onProviderChange(v)}>
-                      <SelectTrigger className="pl-8 relative">
-                        {providerIcon ? (
-                          <img src={providerIcon} alt="provider icon" className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4" />
-                        ) : null}
+                      <SelectTrigger className="flex items-center gap-2">
                         <SelectValue placeholder="Select a provider" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="gemini">
-                          <span className="inline-flex items-center gap-2"><img src={chrome.runtime.getURL('images/gemini-color.png')} className="h-4 w-4" />Gemini</span>
+                          <span className="inline-flex items-center gap-2">
+                            <img src={chrome.runtime.getURL('images/gemini-color.png')} className="h-4 w-4" />
+                            Gemini
+                          </span>
                         </SelectItem>
                         <SelectItem value="cerebras">
-                          <span className="inline-flex items-center gap-2"><img src={chrome.runtime.getURL('images/cerebras-color.png')} className="h-4 w-4" />Cerebras</span>
+                          <span className="inline-flex items-center gap-2">
+                            <img src={chrome.runtime.getURL('images/cerebras-color.png')} className="h-4 w-4" />
+                            Cerebras
+                          </span>
                         </SelectItem>
                         <SelectItem value="hybrid">Hybrid</SelectItem>
                       </SelectContent>
@@ -266,14 +264,14 @@ export default function App() {
                 <Separator />
               </CardContent>
               <CardFooter className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full sm:max-w-[520px]">
-                  <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 min-w-0">
-                    <span className="text-sm text-muted-foreground inline-flex items-center gap-1.5 shrink-0"><SatelliteDish size={14} /> Gemini API</span>
-                    <div className="ml-auto"><StatusPill state={testGemini} label="Status" /></div>
+                <div className="flex flex-wrap gap-3 w-full sm:flex-1">
+                  <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 flex-1 min-w-[220px]">
+                    <span className="text-sm text-muted-foreground inline-flex items-center gap-1.5"><SatelliteDish size={14} /> Gemini API</span>
+                    <StatusPill state={testGemini} label="Status" />
                   </div>
-                  <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 min-w-0">
-                    <span className="text-sm text-muted-foreground inline-flex items-center gap-1.5 shrink-0"><SatelliteDish size={14} /> Cerebras API</span>
-                    <div className="ml-auto"><StatusPill state={testCerebras} label="Status" /></div>
+                  <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 flex-1 min-w-[220px]">
+                    <span className="text-sm text-muted-foreground inline-flex items-center gap-1.5"><SatelliteDish size={14} /> Cerebras API</span>
+                    <StatusPill state={testCerebras} label="Status" />
                   </div>
                 </div>
                 <div className="flex gap-2 sm:ml-auto">
