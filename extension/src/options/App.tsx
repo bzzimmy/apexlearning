@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Settings, Theme } from '../shared/types'
 import { applyTheme } from '../shared/theme'
 import { Boxes, Palette, Timer, AlertTriangle, Hash, Repeat, Image as ImageIcon, SatelliteDish, KeySquare, HelpCircle, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -118,11 +118,25 @@ export default function App() {
     }
   }
 
-  const StatusBadge = ({ state }: { state: typeof testGemini }) => {
-    const color = state === 'connected' ? 'text-green-600' : state === 'pending' ? 'text-amber-600' : state === 'missing' ? 'text-gray-500' : 'text-rose-600'
-    const label = state === 'connected' ? 'Connected' : state === 'pending' ? 'Checking…' : state === 'missing' ? 'Missing key' : state === 'idle' ? '-' : 'Disconnected'
-    return <span className={`text-xs ${color}`}>{label}</span>
+  const StatusPill = ({ state, label }: { state: typeof testGemini; label: string }) => {
+    const color = state === 'connected' ? 'bg-green-500' : state === 'pending' ? 'bg-amber-500' : state === 'missing' ? 'bg-gray-400' : state === 'idle' ? 'bg-gray-300' : 'bg-rose-500'
+    const text = state === 'connected' ? 'Connected' : state === 'pending' ? 'Checking…' : state === 'missing' ? 'Missing key' : state === 'idle' ? '-' : 'Disconnected'
+    return (
+      <div className="inline-flex items-center gap-2 text-xs min-w-0">
+        <span className="text-muted-foreground shrink-0">{label}</span>
+        <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 whitespace-nowrap shrink-0">
+          <span className={`h-1.5 w-1.5 rounded-full ${color}`} />
+          <span>{text}</span>
+        </span>
+      </div>
+    )
   }
+
+  const providerIcon = useMemo(() => {
+    if (settings.provider === 'gemini') return chrome.runtime.getURL('images/gemini-color.png')
+    if (settings.provider === 'cerebras') return chrome.runtime.getURL('images/cerebras-color.png')
+    return ''
+  }, [settings.provider])
 
   return (
     <TooltipProvider disableHoverableContent>
@@ -146,24 +160,31 @@ export default function App() {
                 <CardDescription>Select provider, keys, and model</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-                  <div className="space-y-1">
-                    <Label className="inline-flex items-center gap-1.5">
-                      <SatelliteDish size={14} /> Provider
-                    </Label>
+                <div className="grid gap-3">
+                  {/* Provider */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-2">
+                    <Label className="inline-flex items-center gap-1.5"><SatelliteDish size={14} /> Provider</Label>
                     <Select value={settings.provider} onValueChange={(v: Settings['provider']) => onProviderChange(v)}>
-                      <SelectTrigger>
+                      <SelectTrigger className="pl-8 relative">
+                        {providerIcon ? (
+                          <img src={providerIcon} alt="provider icon" className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4" />
+                        ) : null}
                         <SelectValue placeholder="Select a provider" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="gemini">Gemini</SelectItem>
-                        <SelectItem value="cerebras">Cerebras</SelectItem>
+                        <SelectItem value="gemini">
+                          <span className="inline-flex items-center gap-2"><img src={chrome.runtime.getURL('images/gemini-color.png')} className="h-4 w-4" />Gemini</span>
+                        </SelectItem>
+                        <SelectItem value="cerebras">
+                          <span className="inline-flex items-center gap-2"><img src={chrome.runtime.getURL('images/cerebras-color.png')} className="h-4 w-4" />Cerebras</span>
+                        </SelectItem>
                         <SelectItem value="hybrid">Hybrid</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <div className="space-y-1">
+                  {/* Gemini key */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-2">
                     <Label className="inline-flex items-center gap-1.5">
                       <KeySquare size={14} /> Gemini API Key
                       <Tooltip>
@@ -185,7 +206,8 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="space-y-1">
+                  {/* Cerebras key */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-2">
                     <Label className="inline-flex items-center gap-1.5">
                       <KeySquare size={14} /> Cerebras API Key
                       <Tooltip>
@@ -207,7 +229,8 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="space-y-1">
+                  {/* Model */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-2">
                     <Label className="inline-flex items-center gap-1.5"><Boxes size={14} /> Model</Label>
                     <Select value={settings.model} onValueChange={(v) => setSettings(s => ({ ...s, model: v }))} disabled={settings.provider === 'hybrid'}>
                       <SelectTrigger>
@@ -226,33 +249,38 @@ export default function App() {
                   <Alert>
                     <AlertTitle>Hybrid routing</AlertTitle>
                     <AlertDescription>
-                      Manual model selection is ignored. Routing:
-                      <ul className="list-disc ml-5 mt-2">
-                        <li>With images: Gemini 2.5 Flash</li>
-                        <li>Text-only: Cerebras Qwen-3-235B Instruct (2507)</li>
-                      </ul>
+                      Routes your request through the best AI model for the question you’re on.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {settings.provider === 'cerebras' && (
+                  <Alert>
+                    <AlertTitle>Cerebras image handling</AlertTitle>
+                    <AlertDescription>
+                      This provider doesn’t process images; we’ll send image questions as text.
                     </AlertDescription>
                   </Alert>
                 )}
 
                 <Separator />
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-                  <div className="flex items-center justify-between rounded-lg border bg-card p-3">
-                    <span className="text-sm text-muted-foreground inline-flex items-center gap-1.5"><SatelliteDish size={14} /> Gemini API</span>
-                    <StatusBadge state={testGemini} />
+              </CardContent>
+              <CardFooter className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full sm:max-w-[520px]">
+                  <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 min-w-0">
+                    <span className="text-sm text-muted-foreground inline-flex items-center gap-1.5 shrink-0"><SatelliteDish size={14} /> Gemini API</span>
+                    <div className="ml-auto"><StatusPill state={testGemini} label="Status" /></div>
                   </div>
-                  <div className="flex items-center justify-between rounded-lg border bg-card p-3">
-                    <span className="text-sm text-muted-foreground inline-flex items-center gap-1.5"><SatelliteDish size={14} /> Cerebras API</span>
-                    <StatusBadge state={testCerebras} />
+                  <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 min-w-0">
+                    <span className="text-sm text-muted-foreground inline-flex items-center gap-1.5 shrink-0"><SatelliteDish size={14} /> Cerebras API</span>
+                    <div className="ml-auto"><StatusPill state={testCerebras} label="Status" /></div>
                   </div>
                 </div>
-
-                <div className="flex gap-2 justify-end">
+                <div className="flex gap-2 sm:ml-auto">
                   <Button variant="secondary" onClick={testConnections}>Test Connections</Button>
                   <Button onClick={save}>Save</Button>
                 </div>
-              </CardContent>
+              </CardFooter>
             </Card>
           </TabsContent>
 
@@ -262,44 +290,35 @@ export default function App() {
                 <CardTitle>Behavior</CardTitle>
                 <CardDescription>Timing, retries, and image handling</CardDescription>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-                <div className="space-y-1">
-                  <Label className="inline-flex items-center gap-1.5"><Timer size={14} /> Delay (sec)</Label>
-                  <Input type="number" min={1} max={30} value={settings.delay} onChange={(e) => setSettings(s => ({ ...s, delay: Number(e.target.value) }))} />
-                </div>
+              <CardContent className="space-y-4">
+                <div className="grid gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-2">
+                    <Label className="inline-flex items-center gap-1.5"><Timer size={14} /> Delay (sec)</Label>
+                    <Input type="number" min={1} max={30} value={settings.delay} onChange={(e) => setSettings(s => ({ ...s, delay: Number(e.target.value) }))} />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-2">
+                    <Label className="inline-flex items-center gap-1.5"><Repeat size={14} /> Attempts</Label>
+                    <Input type="number" min={1} max={10} value={settings.attempts} onChange={(e) => setSettings(s => ({ ...s, attempts: Number(e.target.value) }))} />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-2">
+                    <Label className="inline-flex items-center gap-1.5"><AlertTriangle size={14} /> Sabotage</Label>
+                    <div className="flex justify-end sm:justify-start"><Switch checked={settings.sabotage} onCheckedChange={(v) => setSettings(s => ({ ...s, sabotage: !!v }))} /></div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-2">
+                    <Label className="inline-flex items-center gap-1.5"><Hash size={14} /> Incorrect Count</Label>
+                    <Input type="number" min={0} max={5} disabled={!settings.sabotage} value={settings.incorrectCount} onChange={(e) => setSettings(s => ({ ...s, incorrectCount: Number(e.target.value) }))} />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-2">
+                    <Label className="inline-flex items-center gap-1.5"><ImageIcon size={14} /> Process Images</Label>
+                    <div className="flex justify-end sm:justify-start"><Switch checked={settings.processImages} onCheckedChange={(v) => setSettings(s => ({ ...s, processImages: !!v }))} /></div>
+                  </div>
 
-                <div className="space-y-1">
-                  <Label className="inline-flex items-center gap-1.5"><Repeat size={14} /> Attempts</Label>
-                  <Input type="number" min={1} max={10} value={settings.attempts} onChange={(e) => setSettings(s => ({ ...s, attempts: Number(e.target.value) }))} />
-                </div>
-
-                <div className="flex items-center justify-between rounded-lg border bg-card p-3 col-span-1 sm:col-span-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground"><AlertTriangle size={14} /> Sabotage</div>
-                  <Switch checked={settings.sabotage} onCheckedChange={(v) => setSettings(s => ({ ...s, sabotage: !!v }))} />
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="inline-flex items-center gap-1.5"><Hash size={14} /> Incorrect Count</Label>
-                  <Input type="number" min={0} max={5} disabled={!settings.sabotage} value={settings.incorrectCount} onChange={(e) => setSettings(s => ({ ...s, incorrectCount: Number(e.target.value) }))} />
-                </div>
-
-                <div className="flex items-center justify-between rounded-lg border bg-card p-3 col-span-1 sm:col-span-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground"><ImageIcon size={14} /> Process Images</div>
-                  <Switch checked={settings.processImages} onCheckedChange={(v) => setSettings(s => ({ ...s, processImages: !!v }))} />
-                </div>
-
-                {settings.provider === 'cerebras' && settings.processImages && (
-                  <Alert className="col-span-1 sm:col-span-2">
-                    <AlertTitle>Image processing ignored</AlertTitle>
-                    <AlertDescription>Cerebras routes image questions as text-only.</AlertDescription>
-                  </Alert>
-                )}
-
-                <div className="flex gap-2 justify-end col-span-1 sm:col-span-2">
-                  <Button variant="secondary" onClick={testConnections}>Test Connections</Button>
-                  <Button onClick={save}>Save</Button>
                 </div>
               </CardContent>
+              <CardFooter className="flex justify-end gap-2">
+                <Button variant="secondary" onClick={testConnections}>Test Connections</Button>
+                <Button onClick={save}>Save</Button>
+              </CardFooter>
             </Card>
           </TabsContent>
 
@@ -309,8 +328,8 @@ export default function App() {
                 <CardTitle>Appearance</CardTitle>
                 <CardDescription>Theme and basic styling</CardDescription>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-                <div className="space-y-1">
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-2">
                   <Label className="inline-flex items-center gap-1.5"><Palette size={14} /> Theme</Label>
                   <Select value={settings.theme || 'light'} onValueChange={(v: Theme) => setSettings(s => ({ ...s, theme: v }))}>
                     <SelectTrigger>
@@ -322,12 +341,11 @@ export default function App() {
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div className="flex items-center justify-end gap-2 col-span-1 sm:col-span-2">
-                  <Button variant="secondary" onClick={() => applyTheme((settings.theme as Theme) || 'light')}>Preview</Button>
-                  <Button onClick={save}>Save</Button>
-                </div>
               </CardContent>
+              <CardFooter className="flex justify-end gap-2">
+                <Button variant="secondary" onClick={() => applyTheme((settings.theme as Theme) || 'light')}>Preview</Button>
+                <Button onClick={save}>Save</Button>
+              </CardFooter>
             </Card>
           </TabsContent>
         </Tabs>
