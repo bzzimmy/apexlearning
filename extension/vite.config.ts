@@ -1,10 +1,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { crx } from '@crxjs/vite-plugin'
+import tailwindcss from '@tailwindcss/vite'
+import { fileURLToPath } from 'node:url'
 // Import a typed MV3 manifest module
 import manifest from './src/manifest'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), crx({ manifest })],
+  plugins: [react(), tailwindcss(), crx({ manifest })],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
 })

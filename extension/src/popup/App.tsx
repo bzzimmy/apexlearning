@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Brain, Network, GraduationCap, Gauge, Play, Square, Settings as SettingsIcon, Info, CheckCircle2, Loader2, XCircle } from 'lucide-react'
 import { applyTheme } from '../shared/theme'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 
 type ApiState = 'pending' | 'connected' | 'disconnected'
 
@@ -93,81 +97,90 @@ export default function App() {
     })
   }, [])
 
-  // Compose a compact status chip
-  const { label: statusLabel, classes: statusClasses, Icon: StatusIcon } = (() => {
-    if (!isApex) return { label: 'Not on Apex', classes: 'bg-[var(--muted)] text-[var(--muted-foreground)]', Icon: Info }
-    if (status === 'running') return { label: 'Running', classes: 'bg-[var(--primary)] text-[var(--primary-foreground)]', Icon: Loader2 }
-    if (status === 'error') return { label: 'Error', classes: 'bg-[var(--destructive)] text-[var(--destructive-foreground)]', Icon: XCircle }
-    return { label: 'Ready', classes: 'bg-[var(--secondary)] text-[var(--secondary-foreground)]', Icon: CheckCircle2 }
+  // Status badge mapping
+  const { label: statusLabel, variant: statusVariant, Icon: StatusIcon } = (() => {
+    if (!isApex) return { label: 'Not on Apex', variant: 'secondary' as const, Icon: Info }
+    if (status === 'running') return { label: 'Running', variant: 'default' as const, Icon: Loader2 }
+    if (status === 'error') return { label: 'Error', variant: 'destructive' as const, Icon: XCircle }
+    return { label: 'Ready', variant: 'secondary' as const, Icon: CheckCircle2 }
   })()
 
   return (
-    <div className="w-[320px] p-0 bg-[var(--background)] text-[var(--foreground)]">
-      {/* Neutral, centered header */}
-      <div className="px-4 pt-4 pb-2 bg-[var(--card)] border-b border-[var(--border)] text-center">
-        <h3 className="text-lg font-semibold tracking-tight text-[var(--foreground)]">Apex Assist</h3>
-        <p className="text-xs opacity-80">AI-powered Apex automation</p>
+    <div className="w-[320px] bg-background text-foreground">
+      {/* Header */}
+      <div className="px-4 pt-4 pb-2 bg-card border-b border-border text-center">
+        <h3 className="text-lg font-semibold tracking-tight">Apex Assist</h3>
+        <p className="text-xs text-muted-foreground">AI-powered Apex automation</p>
       </div>
 
-      {/* Status chip */}
+      {/* Status */}
       <div className="px-4 pt-3">
         <div className="flex justify-center">
-          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusClasses}`}>
+          <Badge variant={statusVariant as any} className="inline-flex items-center gap-1.5">
             <StatusIcon size={14} className={StatusIcon === Loader2 ? 'animate-spin' : ''} />
             <span>Status: {statusLabel}</span>
-          </span>
+          </Badge>
         </div>
       </div>
 
       <div className="p-4 space-y-3">
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm p-3 text-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[var(--muted-foreground)]"><Brain size={16} /> Model</div>
-            <div className="font-medium text-right truncate max-w-[160px]" title={modelName}>{modelName}</div>
-          </div>
-          <div className="mt-2 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[var(--muted-foreground)]"><Network size={16} /> API</div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm">{api === 'pending' ? 'Checking…' : api === 'connected' ? 'Connected' : 'Disconnected'}</span>
-              <span className={`inline-block h-2 w-2 rounded-full ${api === 'connected' ? 'bg-green-500' : api === 'pending' ? 'bg-amber-400' : 'bg-rose-500'}`}></span>
+        <Card>
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm">Model / API</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-muted-foreground"><Brain size={16} /> Model</div>
+              <div className="font-medium text-right truncate max-w-[160px]" title={modelName}>{modelName}</div>
             </div>
-          </div>
-        </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-muted-foreground"><Network size={16} /> API</div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm">{api === 'pending' ? 'Checking…' : api === 'connected' ? 'Connected' : 'Disconnected'}</span>
+                <span className={`inline-block h-2 w-2 rounded-full ${api === 'connected' ? 'bg-green-500' : api === 'pending' ? 'bg-amber-400' : 'bg-rose-500'}`}></span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm p-3 text-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[var(--muted-foreground)]"><GraduationCap size={16} /> Quiz</div>
-            <div className="truncate max-w-[160px] text-right" title={quizName}>{quizName}</div>
-          </div>
-          <div className="mt-2 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[var(--muted-foreground)]"><Gauge size={16} /> Progress</div>
-            <div className="font-medium">{quizProgress}</div>
-          </div>
-        </div>
+        <Card>
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm">Quiz</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-muted-foreground"><GraduationCap size={16} /> Name</div>
+              <div className="truncate max-w-[160px] text-right" title={quizName}>{quizName}</div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-muted-foreground"><Gauge size={16} /> Progress</div>
+              <div className="font-medium">{quizProgress}</div>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="flex gap-2">
-          <button
-            className="flex-1 px-3 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] shadow-sm hover:opacity-95 active:opacity-100 disabled:opacity-50 inline-flex items-center justify-center gap-2"
-            onClick={start}
-            disabled={status === 'running' || !isApex || quizProgress === 'Completed'}
-          >
+          <Button className="flex-1 inline-flex items-center gap-2" onClick={start} disabled={status === 'running' || !isApex || quizProgress === 'Completed'}>
             <Play size={16} /> Start
-          </button>
-          <button
-            className="flex-1 px-3 py-2 rounded-lg bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:opacity-95 active:opacity-100 disabled:opacity-50 inline-flex items-center justify-center gap-2"
-            onClick={stop}
-            disabled={status !== 'running'}
-          >
+          </Button>
+          <Button variant="secondary" className="flex-1 inline-flex items-center gap-2" onClick={stop} disabled={status !== 'running'}>
             <Square size={16} /> Stop
-          </button>
+          </Button>
         </div>
 
-        <div className="flex items-center justify-center text-xs">
+        <div className="flex items-center justify-center">
           <div className="flex items-center gap-2">
-            <a className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:opacity-90" href="../options/index.html" target="_blank" rel="noreferrer"><SettingsIcon size={14} /> Options</a>
-            <a className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:opacity-90" href="../about/index.html" target="_blank" rel="noreferrer"><Info size={14} /> About</a>
+            <Button variant="outline" size="sm" asChild>
+              <a href="../options/index.html" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1"><SettingsIcon size={14} /> Options</a>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <a href="../about/index.html" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1"><Info size={14} /> About</a>
+            </Button>
           </div>
         </div>
+
+        <Separator />
+        <p className="text-[10px] text-muted-foreground text-center">© {new Date().getFullYear()} Apex Assist</p>
       </div>
     </div>
   )
