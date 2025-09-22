@@ -1,5 +1,5 @@
 import { captureScreen, questionHasInlineMedia } from './core/images'
-import { buildPrompt, buildSortPrompt } from './core/prompt'
+import { buildPrompt, buildSortPrompt, detectExactAnswerCount } from './core/prompt'
 import { parseProgress } from './core/status'
 import { getAnswers, getQuestion, getAnswersMultipleChoice } from './scrape'
 import { getSortItems, getSortSlots, performSortPairs } from './sort'
@@ -119,9 +119,14 @@ async function runAutomation() {
   if (images.length > 0) {
     input += 'Note: An image of the entire screen is provided. Analyze the visual context with the text.\n\n'
   }
+  const exactCount = isMC ? detectExactAnswerCount(question) : null
   if (!isSort && isMC) {
     input += 'Task: This is a multiple-choice question where MULTIPLE answers can be correct. You MUST identify ALL correct options.\n'
-    input += 'Return ALL correct options in an array, even if there are multiple correct answers.\n'
+    if (typeof exactCount === 'number') {
+      input += `Exactly ${exactCount} answers are correct. Return exactly ${exactCount} letters.\n`
+    } else {
+      input += 'Return ALL correct options in an array, even if there are multiple correct answers.\n'
+    }
     input += 'Provide your answer in the format: {"letters": ["A", "C"], "explanation": "[Few words why]"}\n'
     input += 'IMPORTANT: Use ONLY option letters (A, B, C, etc.).\n'
     input += 'Respond ONLY with a single JSON object as described. Do not include any other text.\n'
@@ -166,6 +171,7 @@ async function runAutomation() {
           isMultipleChoice: isMC,
           responseMode: isSort ? 'sort' : 'letters',
           sortCounts: isSort ? { rows: getSortSlots().length, items: getSortItems().length } : undefined,
+          expectedCount: typeof exactCount === 'number' ? exactCount : undefined,
         },
         (res) => {
           if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message))

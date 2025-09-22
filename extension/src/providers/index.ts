@@ -14,6 +14,7 @@ export interface ProviderCallArgs {
   isMultipleChoice?: boolean
   responseMode?: 'letters' | 'sort'
   sortCounts?: { rows: number; items: number }
+  expectedCount?: number
 }
 
 export async function callProvider(args: ProviderCallArgs): Promise<any> {

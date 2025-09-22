@@ -2,7 +2,7 @@ import type { ProviderCallArgs } from './index'
 import { GoogleGenAI } from '@google/genai'
 
 // Returns the raw Gemini response JSON (with candidates/content/parts/text)
-export async function callGemini({ input, images, apiKey, model, allowedLetters, isMultipleChoice, responseMode, sortCounts }: ProviderCallArgs): Promise<any> {
+export async function callGemini({ input, images, apiKey, model, allowedLetters, isMultipleChoice, responseMode, sortCounts, expectedCount }: ProviderCallArgs): Promise<any> {
   // Use the official GenAI SDK to access the v1 contract with config.*
   const ai = new GoogleGenAI({ apiKey })
   // Model is pinned to gemini-2.5-flash below; reference to satisfy noUnusedParameters
@@ -20,7 +20,9 @@ export async function callGemini({ input, images, apiKey, model, allowedLetters,
   const lettersEnum = Array.isArray(allowedLetters) && allowedLetters.length > 0
     ? Array.from(new Set(allowedLetters.map((l) => String(l).toUpperCase())))
     : ['A', 'B', 'C', 'D', 'E', 'F']
-  const maxItems = isMultipleChoice ? lettersEnum.length : 1
+  const hasExact = typeof expectedCount === 'number' && expectedCount > 0
+  const minItems = hasExact ? expectedCount : (isMultipleChoice ? 1 : 1)
+  const maxItems = hasExact ? expectedCount : (isMultipleChoice ? lettersEnum.length : 1)
 
   // Always use Gemini 2.5 Flash for Gemini calls
   const modelToUse = 'gemini-2.5-flash'
@@ -70,7 +72,7 @@ export async function callGemini({ input, images, apiKey, model, allowedLetters,
         letters: {
           type: 'array',
           items: { type: 'string', enum: lettersEnum },
-          minItems: 1,
+          minItems,
           maxItems,
         },
         // Optional; omit from required

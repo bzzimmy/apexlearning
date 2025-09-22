@@ -68,7 +68,8 @@ export function parseLettersResponseText(responseText: string, isMultipleChoice:
   try {
     const parsed = JSON.parse(responseText)
     parsed.letters = mapContentToLettersIfNeeded(coerceLettersArray(parsed.letters), isMultipleChoice, answers)
-    if (parsed.letters?.length) return parsed
+    // Treat a well-formed JSON object as a successful parse even if it has zero letters.
+    if (Array.isArray(parsed.letters)) return parsed
   } catch {}
 
   // Try fenced code blocks first
@@ -83,7 +84,7 @@ export function parseLettersResponseText(responseText: string, isMultipleChoice:
     if (json) {
       const parsed: any = JSON.parse(json)
       parsed.letters = mapContentToLettersIfNeeded(coerceLettersArray(parsed.letters), isMultipleChoice, answers)
-      if (parsed.letters?.length) return parsed
+      if (Array.isArray(parsed.letters)) return parsed
     }
   }
 

@@ -1,7 +1,7 @@
 import type { ProviderCallArgs } from './index'
 
 // Returns a Gemini-like response shape so content parsing stays unified
-export async function callCerebras({ input, images, apiKey, model, allowedLetters, isMultipleChoice, responseMode, sortCounts }: ProviderCallArgs): Promise<any> {
+export async function callCerebras({ input, images, apiKey, model, allowedLetters, isMultipleChoice, responseMode, sortCounts, expectedCount }: ProviderCallArgs): Promise<any> {
   if (images && images.length > 0) {
     console.log('[Cerebras] Warning: images are ignored by Cerebras in this flow')
   }
@@ -11,7 +11,9 @@ export async function callCerebras({ input, images, apiKey, model, allowedLetter
   const lettersEnum = Array.isArray(allowedLetters) && allowedLetters.length > 0
     ? Array.from(new Set(allowedLetters.map((l) => String(l).toUpperCase())))
     : ['A', 'B', 'C', 'D', 'E', 'F']
-  const maxItems = isMultipleChoice ? lettersEnum.length : 1
+  const hasExact = typeof expectedCount === 'number' && expectedCount > 0
+  const minItems = hasExact ? expectedCount : (isMultipleChoice ? 1 : 1)
+  const maxItems = hasExact ? expectedCount : (isMultipleChoice ? lettersEnum.length : 1)
 
   // Structured outputs via json_schema (strict)
   const response_format = (() => {
@@ -59,14 +61,15 @@ export async function callCerebras({ input, images, apiKey, model, allowedLetter
             letters: {
               type: 'array',
               items: { type: 'string', enum: lettersEnum },
-              minItems: 1,
+              minItems,
               maxItems,
             },
             explanation: {
               anyOf: [ { type: 'string' }, { type: 'null' } ]
             }
           },
-          required: ['letters', 'explanation'],
+          // Only require letters; explanation is optional
+          required: ['letters'],
           additionalProperties: false,
         }
       }

@@ -51,6 +51,7 @@ export type BackgroundMessage =
       // When present, providers will use a different response schema
       responseMode?: 'letters' | 'sort';
       sortCounts?: { rows: number; items: number };
+      expectedCount?: number; // exact number of answers required (optional)
     }
   | { action: 'captureVisibleTab' }
   | {
