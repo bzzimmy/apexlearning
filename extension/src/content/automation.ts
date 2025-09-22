@@ -1,6 +1,6 @@
 import { captureScreen, questionHasInlineMedia } from './core/images'
 import { buildPrompt, buildSortPrompt, detectExactAnswerCount } from './core/prompt'
-import { parseProgress } from './core/status'
+import { parseProgress, isCompleted } from './core/status'
 import { getAnswers, getQuestion, getAnswersMultipleChoice } from './scrape'
 import { getSortItems, getSortSlots, performSortPairs } from './sort'
 import type { AnswerOption } from './scrape'
@@ -74,9 +74,17 @@ async function runAutomation() {
   }
   attempts++
 
+  // If the quiz shows a completion/summary screen, stop quietly.
+  if (isCompleted()) {
+    logger.info('Quiz is completed — stopping automation')
+    automationRunning = false
+    return
+  }
+
   const question = getQuestion()
   if (!question || question.trim().length < 1) {
-    logger.warn('Cannot get question, exiting')
+    // On some completion views there is no question element; treat as a normal stop.
+    logger.info('No question detected — stopping automation')
     automationRunning = false
     return
   }
