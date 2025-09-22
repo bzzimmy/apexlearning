@@ -140,7 +140,7 @@ async function runAutomation() {
   try {
     if (!settings) throw new Error('Settings not loaded')
     // Decide provider/model/apiKey per-question (hybrid) or from settings
-    let provider: 'gemini' | 'cerebras'
+    let provider: 'gemini' | 'cerebras' | 'openrouter'
     let model: string
     let apiKey: string | undefined
 

@@ -1,8 +1,9 @@
 import type { InlineImage } from '../shared/types'
 import { callGemini } from './gemini'
 import { callCerebras } from './cerebras'
+import { callOpenRouter } from './openrouter'
 
-export type ProviderId = 'gemini' | 'cerebras'
+export type ProviderId = 'gemini' | 'cerebras' | 'openrouter'
 
 export interface ProviderCallArgs {
   provider: ProviderId
@@ -21,6 +22,7 @@ export async function callProvider(args: ProviderCallArgs): Promise<any> {
   const { provider } = args
   if (provider === 'gemini') return callGemini(args)
   if (provider === 'cerebras') return callCerebras(args)
+  if (provider === 'openrouter') return callOpenRouter(args)
   throw new Error(`Unsupported provider: ${provider}`)
 }
 
@@ -41,6 +43,21 @@ export async function testProvider({ provider, apiKey, model }: { provider: Prov
     const res = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify(body),
+    })
+    return res.ok
+  }
+  if (provider === 'openrouter') {
+    const apiUrl = 'https://openrouter.ai/api/v1/chat/completions'
+    const body = {
+      model,
+      messages: [{ role: 'user', content: 'ping' }],
+      max_tokens: 1,
+      temperature: 0,
+    }
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, 'X-Title': 'Apex Assist' },
       body: JSON.stringify(body),
     })
     return res.ok

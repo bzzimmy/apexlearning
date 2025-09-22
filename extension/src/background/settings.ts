@@ -4,6 +4,7 @@ export const DEFAULT_SETTINGS: Settings = {
   provider: 'gemini',
   geminiApiKey: '',
   cerebrasApiKey: '',
+  openrouterApiKey: '',
   model: 'gemini-2.5-flash',
   delay: 5,
   sabotage: true,

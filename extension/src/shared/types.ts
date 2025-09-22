@@ -1,4 +1,4 @@
-export type Provider = 'gemini' | 'cerebras' | 'hybrid';
+export type Provider = 'gemini' | 'cerebras' | 'openrouter' | 'hybrid';
 
 export type Theme = 'light' | 'dark'
 
@@ -6,6 +6,7 @@ export interface Settings {
   provider: Provider;
   geminiApiKey?: string;
   cerebrasApiKey?: string;
+  openrouterApiKey?: string;
   model: string;
   delay: number;
   sabotage: boolean;

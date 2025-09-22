@@ -89,7 +89,7 @@ export default function App() {
         setModelName(`${model} (${provider})`)
       }
 
-      const apiKey = provider === 'cerebras' ? settings.cerebrasApiKey : settings.geminiApiKey
+      const apiKey = provider === 'cerebras' ? settings.cerebrasApiKey : provider === 'openrouter' ? settings.openrouterApiKey : settings.geminiApiKey
       if (!apiKey) { setApi('disconnected'); return }
       chrome.runtime.sendMessage({ action: 'testProvider', provider, apiKey, model }, (response) => {
         if (chrome.runtime.lastError || !response?.success) setApi('disconnected'); else setApi('connected')

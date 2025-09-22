@@ -1,6 +1,6 @@
 import type { Settings } from '../../shared/types'
 
-export type ProviderChoice = { provider: 'gemini' | 'cerebras'; model: string; apiKey?: string }
+export type ProviderChoice = { provider: 'gemini' | 'cerebras' | 'openrouter'; model: string; apiKey?: string }
 
 export function chooseProvider(settings: Settings, hasInlineMedia: boolean): ProviderChoice {
   if (settings.provider === 'hybrid') {
@@ -11,6 +11,8 @@ export function chooseProvider(settings: Settings, hasInlineMedia: boolean): Pro
     }
   } else if (settings.provider === 'cerebras') {
     return { provider: 'cerebras', model: settings.model, apiKey: settings.cerebrasApiKey }
+  } else if (settings.provider === 'openrouter') {
+    return { provider: 'openrouter', model: settings.model, apiKey: settings.openrouterApiKey }
   } else {
     return { provider: 'gemini', model: settings.model, apiKey: settings.geminiApiKey }
   }

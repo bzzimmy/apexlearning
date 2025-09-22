@@ -25,8 +25,12 @@ export function registerMessageHandlers() {
 
     if (message.action === 'callAIProvider') {
       const { input, images = [], provider, apiKey, model, allowedLetters, isMultipleChoice, responseMode, sortCounts, expectedCount } = message
-      const p = (provider === 'gemini' || provider === 'cerebras') ? provider : 'gemini'
-      callProvider({ provider: p, input, images, apiKey, model, allowedLetters, isMultipleChoice, responseMode, sortCounts, expectedCount })
+      const allowed = ['gemini', 'cerebras', 'openrouter'] as const
+      if (!allowed.includes(provider as any)) {
+        sendResponse({ success: false, error: `Unsupported provider: ${provider}` })
+        return false
+      }
+      callProvider({ provider: provider as any, input, images, apiKey, model, allowedLetters, isMultipleChoice, responseMode, sortCounts, expectedCount })
         .then((data) => sendResponse({ success: true, data }))
         .catch((error) => sendResponse({ success: false, error: error?.message || String(error) }))
       return true
@@ -34,8 +38,12 @@ export function registerMessageHandlers() {
 
     if (message.action === 'testProvider') {
       const { provider, apiKey, model } = message
-      const p = (provider === 'gemini' || provider === 'cerebras') ? provider : 'gemini'
-      testProvider({ provider: p, apiKey, model })
+      const allowed = ['gemini', 'cerebras', 'openrouter'] as const
+      if (!allowed.includes(provider as any)) {
+        sendResponse({ success: false, error: `Unsupported provider: ${provider}` })
+        return false
+      }
+      testProvider({ provider: provider as any, apiKey, model })
         .then((ok) => sendResponse({ success: ok }))
         .catch((error) => sendResponse({ success: false, error: error?.message || String(error) }))
       return true

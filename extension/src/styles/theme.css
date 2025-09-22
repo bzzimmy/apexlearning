@@ -103,3 +103,7 @@ input[type="radio"],
 input[type="range"] {
   accent-color: var(--primary);
 }
+
+/* Invert OpenRouter logo in light mode for better contrast */
+:root:not(.dark) .openrouter-icon { filter: invert(1); }
+.dark .openrouter-icon { filter: none; }

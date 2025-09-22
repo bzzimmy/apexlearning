@@ -19,6 +19,7 @@ const DEFAULTS: Settings = {
   provider: 'gemini',
   geminiApiKey: '',
   cerebrasApiKey: '',
+  openrouterApiKey: '',
   model: 'gemini-2.5-flash',
   delay: 5,
   sabotage: true,
@@ -33,8 +34,10 @@ export default function App() {
   const [providerModels, setProviderModels] = useState<string[]>(['gemini-2.5-flash'])
   const [testGemini, setTestGemini] = useState<'idle' | 'pending' | 'connected' | 'disconnected' | 'missing'>('idle')
   const [testCerebras, setTestCerebras] = useState<'idle' | 'pending' | 'connected' | 'disconnected' | 'missing'>('idle')
+  const [testOpenRouter, setTestOpenRouter] = useState<'idle' | 'pending' | 'connected' | 'disconnected' | 'missing'>('idle')
   const [showGeminiKey, setShowGeminiKey] = useState(false)
   const [showCerebrasKey, setShowCerebrasKey] = useState(false)
+  const [showOpenRouterKey, setShowOpenRouterKey] = useState(false)
 
   useEffect(() => {
     chrome.storage.sync.get('settings', (data) => {
@@ -51,9 +54,21 @@ export default function App() {
         'qwen-3-235b-a22b-thinking-2507',
         'qwen-3-coder-480b',
       ]
-      const models = prov === 'cerebras' ? cerebrasModels : ['gemini-2.5-flash']
+      const openrouterModels = [
+        'google/gemini-2.5-pro',
+        'openai/gpt-5',
+        'openai/gpt-5-mini',
+        'anthropic/claude-sonnet-4',
+        'x-ai/grok-4-fast:free',
+        'mistralai/mistral-small-3.2-24b-instruct:free',
+        'meta-llama/llama-4-maverick:free',
+        'meta-llama/llama-4-scout:free',
+      ]
+      const models = prov === 'cerebras' ? cerebrasModels : prov === 'openrouter' ? openrouterModels : ['gemini-2.5-flash']
       if (prov === 'cerebras' && !models.includes(loaded.model)) {
         loaded.model = 'llama-4-scout-17b-16e-instruct'
+      } else if (prov === 'openrouter' && !models.includes(loaded.model)) {
+        loaded.model = 'x-ai/grok-4-fast:free'
       } else if (prov === 'gemini' && loaded.model !== 'gemini-2.5-flash') {
         loaded.model = 'gemini-2.5-flash'
       }
@@ -68,7 +83,7 @@ export default function App() {
   }, [settings.theme])
 
   const onProviderChange = (prov: Settings['provider']) => {
-    setSettings((s) => ({ ...s, provider: prov, model: prov === 'cerebras' ? 'llama-4-scout-17b-16e-instruct' : 'gemini-2.5-flash' }))
+    setSettings((s) => ({ ...s, provider: prov, model: prov === 'cerebras' ? 'llama-4-scout-17b-16e-instruct' : prov === 'openrouter' ? 'x-ai/grok-4-fast:free' : 'gemini-2.5-flash' }))
     setProviderModels(prov === 'cerebras'
       ? [
           'llama-4-scout-17b-16e-instruct',
@@ -80,7 +95,16 @@ export default function App() {
           'qwen-3-235b-a22b-thinking-2507',
           'qwen-3-coder-480b',
         ]
-      : ['gemini-2.5-flash'])
+      : prov === 'openrouter' ? [
+          'google/gemini-2.5-pro',
+          'openai/gpt-5',
+          'openai/gpt-5-mini',
+          'anthropic/claude-sonnet-4',
+          'x-ai/grok-4-fast:free',
+          'mistralai/mistral-small-3.2-24b-instruct:free',
+          'meta-llama/llama-4-maverick:free',
+          'meta-llama/llama-4-scout:free',
+        ] : ['gemini-2.5-flash'])
   }
 
   const save = () => {
@@ -92,6 +116,7 @@ export default function App() {
   const testConnections = async () => {
     setTestGemini('pending')
     setTestCerebras('pending')
+    setTestOpenRouter('pending')
 
     const gKey = settings.geminiApiKey || ''
     if (!gKey) {
@@ -113,6 +138,18 @@ export default function App() {
         { action: 'testProvider', provider: 'cerebras', apiKey: cKey, model: 'qwen-3-235b-a22b-instruct-2507' },
         (res) => {
           if (chrome.runtime.lastError || !res?.success) setTestCerebras('disconnected'); else setTestCerebras('connected')
+        }
+      )
+    }
+
+    const oKey = settings.openrouterApiKey || ''
+    if (!oKey) {
+      setTestOpenRouter('missing')
+    } else {
+      chrome.runtime.sendMessage(
+        { action: 'testProvider', provider: 'openrouter', apiKey: oKey, model: 'x-ai/grok-4-fast:free' },
+        (res) => {
+          if (chrome.runtime.lastError || !res?.success) setTestOpenRouter('disconnected'); else setTestOpenRouter('connected')
         }
       )
     }
@@ -176,6 +213,12 @@ export default function App() {
                             Cerebras
                           </span>
                         </SelectItem>
+                        <SelectItem value="openrouter">
+                          <span className="inline-flex items-center gap-2">
+                            <img src={chrome.runtime.getURL('images/openrouter.png')} className="h-4 w-4 openrouter-icon" />
+                            OpenRouter
+                          </span>
+                        </SelectItem>
                         <SelectItem value="hybrid">Hybrid</SelectItem>
                       </SelectContent>
                     </Select>
@@ -227,6 +270,29 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* OpenRouter key */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-2">
+                    <Label className="inline-flex items-center gap-1.5">
+                      <KeySquare size={14} /> OpenRouter API Key
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle size={14} className="text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>Required for OpenRouter provider.</TooltipContent>
+                      </Tooltip>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        type={showOpenRouterKey ? 'text' : 'password'}
+                        value={settings.openrouterApiKey || ''}
+                        onChange={(e) => setSettings(s => ({ ...s, openrouterApiKey: e.target.value }))}
+                      />
+                      <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2" onClick={() => setShowOpenRouterKey(v => !v)} aria-label={showOpenRouterKey ? 'Hide OpenRouter API key' : 'Show OpenRouter API key'}>
+                        {showOpenRouterKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </Button>
+                    </div>
+                  </div>
+
                   {/* Model */}
                   <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-2">
                     <Label className="inline-flex items-center gap-1.5"><Boxes size={14} /> Model</Label>
@@ -272,6 +338,10 @@ export default function App() {
                   <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 flex-1 min-w-[220px]">
                     <span className="text-sm text-muted-foreground inline-flex items-center gap-1.5"><SatelliteDish size={14} /> Cerebras API</span>
                     <StatusPill state={testCerebras} label="Status" />
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 flex-1 min-w-[220px]">
+                    <span className="text-sm text-muted-foreground inline-flex items-center gap-1.5"><SatelliteDish size={14} /> OpenRouter API</span>
+                    <StatusPill state={testOpenRouter} label="Status" />
                   </div>
                 </div>
                 <div className="flex gap-2 sm:ml-auto">
