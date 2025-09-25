@@ -194,7 +194,7 @@ export default function App() {
               <CardContent className="space-y-4">
                 <div className="grid gap-3">
                   {/* Provider */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] items-center gap-2">
                     <Label className="inline-flex items-center gap-1.5"><SatelliteDish size={14} /> Provider</Label>
                     <Select value={settings.provider} onValueChange={(v: Settings['provider']) => onProviderChange(v)}>
                       <SelectTrigger className="flex items-center gap-2">
@@ -230,7 +230,7 @@ export default function App() {
                   </div>
 
                   {/* Gemini key */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] items-center gap-2">
                     <Label className="inline-flex items-center gap-1.5">
                       <KeySquare size={14} /> Gemini API Key
                       <Tooltip>
@@ -253,7 +253,7 @@ export default function App() {
                   </div>
 
                   {/* Cerebras key */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] items-center gap-2">
                     <Label className="inline-flex items-center gap-1.5">
                       <KeySquare size={14} /> Cerebras API Key
                       <Tooltip>
@@ -276,12 +276,12 @@ export default function App() {
                   </div>
 
                   {/* OpenRouter key */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-2">
-                    <Label className="inline-flex items-center gap-1.5">
-                      <KeySquare size={14} /> OpenRouter API Key
+                  <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] items-center gap-2">
+                    <Label className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                      <KeySquare size={14} className="shrink-0" /> OpenRouter API Key
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <HelpCircle size={14} className="text-muted-foreground" />
+                          <HelpCircle size={14} className="text-muted-foreground shrink-0" />
                         </TooltipTrigger>
                         <TooltipContent>Required for OpenRouter provider.</TooltipContent>
                       </Tooltip>
@@ -300,7 +300,7 @@ export default function App() {
                   </div>
 
                   {/* Model */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] items-center gap-2">
                     <Label className="inline-flex items-center gap-1.5"><Boxes size={14} /> Model</Label>
                     <Select value={settings.model} onValueChange={(v) => setSettings(s => ({ ...s, model: v }))} disabled={settings.provider === 'hybrid'}>
                       <SelectTrigger>
