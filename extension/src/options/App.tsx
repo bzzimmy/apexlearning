@@ -219,7 +219,12 @@ export default function App() {
                             OpenRouter
                           </span>
                         </SelectItem>
-                        <SelectItem value="hybrid">Hybrid</SelectItem>
+                        <SelectItem value="hybrid">
+                          <span className="inline-flex items-center gap-2">
+                            <img src={chrome.runtime.getURL('images/hybrid.png')} className="h-4 w-4" />
+                            Hybrid
+                          </span>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
