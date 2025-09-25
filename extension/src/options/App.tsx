@@ -288,6 +288,7 @@ export default function App() {
                     </Label>
                     <div className="relative">
                       <Input
+                        className="pr-10"
                         type={showOpenRouterKey ? 'text' : 'password'}
                         value={settings.openrouterApiKey || ''}
                         onChange={(e) => setSettings(s => ({ ...s, openrouterApiKey: e.target.value }))}
