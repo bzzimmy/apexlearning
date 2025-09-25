@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useLayoutEffect } from 'react'
 import type { Settings, Theme } from '../shared/types'
 import { applyTheme } from '../shared/theme'
 import { Boxes, Palette, Timer, AlertTriangle, Hash, Repeat, Image as ImageIcon, SatelliteDish, KeySquare, HelpCircle, Eye, EyeOff } from 'lucide-react'
@@ -38,6 +38,28 @@ export default function App() {
   const [showGeminiKey, setShowGeminiKey] = useState(false)
   const [showCerebrasKey, setShowCerebrasKey] = useState(false)
   const [showOpenRouterKey, setShowOpenRouterKey] = useState(false)
+
+  // Prevent Radix UI dropdown layout shift
+  useLayoutEffect(() => {
+    const observer = new MutationObserver(() => {
+      if (document.body.hasAttribute('data-scroll-locked')) {
+        Object.assign(document.body.style, {
+          marginRight: '0px',
+          marginLeft: '0px',
+          paddingRight: '0px',
+          paddingLeft: '0px'
+        });
+        document.body.style.setProperty('--removed-body-scroll-bar-size', '0px');
+      }
+    });
+
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['data-scroll-locked']
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     chrome.storage.sync.get('settings', (data) => {

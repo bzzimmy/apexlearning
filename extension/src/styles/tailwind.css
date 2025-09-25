@@ -119,3 +119,36 @@
   }
 }
 
+/* Hide scrollbars but maintain scroll functionality */
+html, body {
+  scrollbar-width: none; /* Firefox and Chrome 121+ */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Prevent Radix UI dropdown layout shift */
+body[data-scroll-locked] {
+  --removed-body-scroll-bar-size: 0px !important;
+  margin: 0 !important;
+  padding: 16px !important;
+  overflow: auto !important;
+}
+
+html body[data-scroll-locked] {
+  --removed-body-scroll-bar-size: 0px !important;
+  margin: 0 !important;
+  padding: 16px !important;
+  overflow: auto !important;
+}
+
+:root body[data-scroll-locked] {
+  --removed-body-scroll-bar-size: 0px !important;
+  margin: 0 !important;
+  padding: 16px !important;
+  overflow: auto !important;
+}
+
