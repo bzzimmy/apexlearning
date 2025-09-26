@@ -156,9 +156,7 @@ async function runAutomation() {
     provider = choice.provider
     model = choice.model
     apiKey = choice.apiKey
-    if (settings.provider === 'hybrid') {
-      logger.info(`Model selected: ${model} (${provider})`)
-    }
+    logger.info(`Model selected: ${model} (${provider})`)
 
     if (!apiKey) {
       logger.error(`Missing API key for selected provider: ${provider}. Please set it in Options.`)

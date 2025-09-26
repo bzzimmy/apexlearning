@@ -5,6 +5,11 @@ import type { ProviderCallArgs } from './index'
 export async function callOpenRouter({ input, images, apiKey, model, allowedLetters, isMultipleChoice, responseMode, sortCounts, expectedCount }: ProviderCallArgs): Promise<any> {
   const apiUrl = 'https://openrouter.ai/api/v1/chat/completions'
 
+  // Align logging with other flows (simple, consistent messages)
+  console.log('[Apex Assist] Model selected:', model, '(openrouter)')
+  console.log('[Apex Assist] Images:', images?.length ?? 0)
+  console.log('[Apex Assist] API Request sent')
+
   const lettersEnum = Array.isArray(allowedLetters) && allowedLetters.length > 0
     ? Array.from(new Set(allowedLetters.map((l) => String(l).toUpperCase())))
     : ['A', 'B', 'C', 'D', 'E', 'F']
@@ -103,6 +108,7 @@ export async function callOpenRouter({ input, images, apiKey, model, allowedLett
       const err = JSON.parse(errorText)
       const msg: string = String(err?.error?.message || err?.message || '')
       if (msg.includes('json_schema') || msg.includes('strict')) {
+        console.warn('[Apex Assist] OpenRouter: falling back to json_object')
         const roBody = makeBody({ type: 'json_object' })
         response = await fetch(apiUrl, {
           method: 'POST',
@@ -123,6 +129,10 @@ export async function callOpenRouter({ input, images, apiKey, model, allowedLett
 
   const data = await response.json()
   const text = data?.choices?.[0]?.message?.content ?? ''
+
+  // Align with other flows
+  console.log('[Apex Assist] API Response parsed')
+
   // Convert to Gemini-like shape for existing parsers
   return {
     candidates: [
