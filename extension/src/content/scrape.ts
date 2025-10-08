@@ -94,10 +94,10 @@ export function getAnswersMultipleChoice(): AnswerOption[] {
       const id = inputElRef?.id || inputElRef?.getAttribute('id') || ''
       if (id) {
         try {
-          const esc = (window as any).CSS && (window as any).CSS.escape ? (window as any).CSS.escape(id) : id.replace(/[^A-Za-z0-9_:\-]/g, '')
+          const esc = (window as any).CSS && (window as any).CSS.escape ? (window as any).CSS.escape(id) : id.replace(/[^A-Za-z0-9_:-]/g, '')
           const lab = document.querySelector(`label[for="${esc}"]`) as HTMLElement | null
           if (lab) content = (lab.innerText || lab.textContent || '').trim()
-        } catch {}
+        } catch { void 0 }
       }
     }
 
@@ -109,11 +109,11 @@ export function getAnswersMultipleChoice(): AnswerOption[] {
         const texts: string[] = []
         for (const id2 of ids) {
           try {
-            const esc2 = (window as any).CSS && (window as any).CSS.escape ? (window as any).CSS.escape(id2) : id2.replace(/[^A-Za-z0-9_:\-]/g, '')
+            const esc2 = (window as any).CSS && (window as any).CSS.escape ? (window as any).CSS.escape(id2) : id2.replace(/[^A-Za-z0-9_:-]/g, '')
             const node = document.getElementById(esc2) as HTMLElement | null
             const t = (node?.innerText || node?.textContent || '').trim()
             if (t) texts.push(t)
-          } catch {}
+          } catch { void 0 }
         }
         if (texts.length) content = texts.join(' ')
       }
@@ -146,7 +146,7 @@ export function getAnswersMultipleChoice(): AnswerOption[] {
       letter,
       content,
       select: () => {
-        try { checkbox!.click() } catch {}
+        try { checkbox!.click() } catch { void 0 }
       },
     }
   })

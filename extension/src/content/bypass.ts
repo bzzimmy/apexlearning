@@ -1,7 +1,6 @@
-// @ts-nocheck
 // Minimal, early capture-phase event blockers (document_start)
 (() => {
-  const stop = (e) => { try { e.stopImmediatePropagation(); } catch {} };
+  const stop = (e: Event) => { try { (e as any).stopImmediatePropagation?.(); } catch { void 0 } };
 
   // Visibility and lifecycle events on document
   const docEvents = [
@@ -20,6 +19,5 @@
 
   try {
     console.log('[Bypass] capture listeners attached at', document.readyState);
-  } catch {}
+  } catch { void 0 }
 })();
-

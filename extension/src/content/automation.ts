@@ -148,18 +148,16 @@ async function runAutomation() {
   try {
     if (!settings) throw new Error('Settings not loaded')
     // Decide provider/model/apiKey per-question (hybrid) or from settings
-    let provider: 'gemini' | 'cerebras' | 'openrouter'
-    let model: string
-    let apiKey: string | undefined
+    const providerChoice: { provider: 'gemini' | 'cerebras' | 'openrouter'; model: string; apiKey?: string } = { provider: 'gemini', model: '' }
 
     const choice = chooseProvider(settings, images.length > 0)
-    provider = choice.provider
-    model = choice.model
-    apiKey = choice.apiKey
-    logger.info(`Model selected: ${model} (${provider})`)
+    providerChoice.provider = choice.provider
+    providerChoice.model = choice.model
+    providerChoice.apiKey = choice.apiKey
+    logger.info(`Model selected: ${providerChoice.model} (${providerChoice.provider})`)
 
-    if (!apiKey) {
-      logger.error(`Missing API key for selected provider: ${provider}. Please set it in Options.`)
+    if (!providerChoice.apiKey) {
+      logger.error(`Missing API key for selected provider: ${providerChoice.provider}. Please set it in Options.`)
       automationRunning = false
       return
     }
@@ -170,9 +168,9 @@ async function runAutomation() {
           action: 'callAIProvider',
           input,
           images,
-          provider,
-          apiKey,
-          model,
+          provider: providerChoice.provider,
+          apiKey: providerChoice.apiKey,
+          model: providerChoice.model,
           allowedLetters: isSort ? undefined : answers.map(a => a.letter),
           isMultipleChoice: isMC,
           responseMode: isSort ? 'sort' : 'letters',

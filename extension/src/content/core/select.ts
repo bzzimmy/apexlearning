@@ -22,7 +22,7 @@ export async function selectMultiple(answers: AnswerOption[], letters: string[])
         const parent = checkboxes[idx].closest('.mat-checkbox') as HTMLElement | null
         if (parent) parent.click(); else (checkboxes[idx] as HTMLElement).click()
         await delay(700)
-      } catch {}
+      } catch { void 0 }
     }
   }
 }

@@ -36,7 +36,7 @@ function extractBalancedJson(text: string): string | null {
         try {
           JSON.parse(snippet)
           return snippet
-        } catch {}
+        } catch { void 0 }
         break
       }
     }
@@ -56,7 +56,7 @@ function extractLettersFromText(text: string, answers: AnswerOption[]): string[]
     if (found.length) return Array.from(new Set(found))
   }
   // Single-letter answer like "Answer: C" or "C."
-  const singles = Array.from(text.matchAll(/\b([A-F])(?=[\s\.,;!\?]|$)/gi))
+  const singles = Array.from(text.matchAll(/\b([A-F])(?=[\s.,;!?]|$)/gi))
     .map((m) => m[1].toUpperCase())
     .filter((l) => allowed.has(l))
   if (singles.length) return Array.from(new Set(singles))
@@ -70,7 +70,7 @@ export function parseLettersResponseText(responseText: string, isMultipleChoice:
     parsed.letters = mapContentToLettersIfNeeded(coerceLettersArray(parsed.letters), isMultipleChoice, answers)
     // Treat a well-formed JSON object as a successful parse even if it has zero letters.
     if (Array.isArray(parsed.letters)) return parsed
-  } catch {}
+  } catch { void 0 }
 
   // Try fenced code blocks first
   const fence = /```(?:json)?\s*([\s\S]*?)```/i.exec(responseText)
@@ -101,7 +101,7 @@ export function parseSortResponseText(responseText: string): { pairs: Array<{ ro
   try {
     const parsed = JSON.parse(responseText)
     if (Array.isArray(parsed?.pairs)) return { pairs: parsed.pairs }
-  } catch {}
+  } catch { void 0 }
   // Try fenced
   const fence = /```(?:json)?\s*([\s\S]*?)```/i.exec(responseText)
   const texts: string[] = []
@@ -113,7 +113,7 @@ export function parseSortResponseText(responseText: string): { pairs: Array<{ ro
       try {
         const parsed = JSON.parse(json)
         if (Array.isArray(parsed?.pairs)) return { pairs: parsed.pairs }
-      } catch {}
+      } catch { void 0 }
     }
   }
   // Heuristic: lines like 1->3

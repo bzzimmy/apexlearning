@@ -72,7 +72,7 @@ export function questionHasInlineMedia(): boolean {
   for (const r of roots) {
     try {
       if (r && hasMediaIn(r)) return true
-    } catch {}
+    } catch { void 0 }
   }
   return false
 }
