@@ -67,4 +67,4 @@ export default {
     '*://course.apex.app.edmentum.com/*',
     '*://*.apexvs.com/*',
   ],
-} satisfies chrome.runtime.ManifestV3;
+}
