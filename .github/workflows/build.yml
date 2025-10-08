@@ -1,0 +1,36 @@
+name: Build Extension
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: extension/package-lock.json
+
+      - name: Install dependencies
+        working-directory: extension
+        run: npm ci --no-audit --no-fund
+
+      - name: Build
+        working-directory: extension
+        run: npm run build
+
+      - name: Lint (optional)
+        if: ${{ always() }}
+        working-directory: extension
+        run: |
+          npm run lint || echo "Lint warnings/errors ignored for CI status"
+

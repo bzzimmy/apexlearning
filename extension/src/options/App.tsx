@@ -15,6 +15,29 @@ import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
+// Centralize model lists to avoid duplication
+const CEREBRAS_MODELS = [
+  'llama-4-scout-17b-16e-instruct',
+  'llama3.1-8b',
+  'llama-3.3-70b',
+  'qwen-3-32b',
+  'llama-4-maverick-17b-128e-instruct',
+  'qwen-3-235b-a22b-instruct-2507',
+  'qwen-3-235b-a22b-thinking-2507',
+  'qwen-3-coder-480b',
+]
+
+const OPENROUTER_MODELS = [
+  'google/gemini-2.5-pro',
+  'openai/gpt-5',
+  'openai/gpt-5-mini',
+  'anthropic/claude-sonnet-4',
+  'x-ai/grok-4-fast:free',
+  'mistralai/mistral-small-3.2-24b-instruct:free',
+  'meta-llama/llama-4-maverick:free',
+  'meta-llama/llama-4-scout:free',
+]
+
 const DEFAULTS: Settings = {
   provider: 'gemini',
   geminiApiKey: '',
@@ -66,31 +89,11 @@ export default function App() {
       const loaded: Settings = { ...DEFAULTS, ...(data.settings || {}) }
       applyTheme((loaded.theme as Theme) || 'light')
       const prov = loaded.provider ?? DEFAULTS.provider
-      const cerebrasModels = [
-        'llama-4-scout-17b-16e-instruct',
-        'llama3.1-8b',
-        'llama-3.3-70b',
-        'qwen-3-32b',
-        'llama-4-maverick-17b-128e-instruct',
-        'qwen-3-235b-a22b-instruct-2507',
-        'qwen-3-235b-a22b-thinking-2507',
-        'qwen-3-coder-480b',
-      ]
-      const openrouterModels = [
-        'google/gemini-2.5-pro',
-        'openai/gpt-5',
-        'openai/gpt-5-mini',
-        'anthropic/claude-sonnet-4',
-        'x-ai/grok-4-fast:free',
-        'mistralai/mistral-small-3.2-24b-instruct:free',
-        'meta-llama/llama-4-maverick:free',
-        'meta-llama/llama-4-scout:free',
-      ]
-      const models = prov === 'cerebras' ? cerebrasModels : prov === 'openrouter' ? openrouterModels : ['gemini-2.5-flash']
+      const models = prov === 'cerebras' ? CEREBRAS_MODELS : prov === 'openrouter' ? OPENROUTER_MODELS : ['gemini-2.5-flash']
       if (prov === 'cerebras' && !models.includes(loaded.model)) {
-        loaded.model = 'llama-4-scout-17b-16e-instruct'
+        loaded.model = CEREBRAS_MODELS[0]
       } else if (prov === 'openrouter' && !models.includes(loaded.model)) {
-        loaded.model = 'x-ai/grok-4-fast:free'
+        loaded.model = OPENROUTER_MODELS[4] // default to Grok free
       } else if (prov === 'gemini' && loaded.model !== 'gemini-2.5-flash') {
         loaded.model = 'gemini-2.5-flash'
       }
@@ -105,28 +108,12 @@ export default function App() {
   }, [settings.theme])
 
   const onProviderChange = (prov: Settings['provider']) => {
-    setSettings((s) => ({ ...s, provider: prov, model: prov === 'cerebras' ? 'llama-4-scout-17b-16e-instruct' : prov === 'openrouter' ? 'x-ai/grok-4-fast:free' : 'gemini-2.5-flash' }))
-    setProviderModels(prov === 'cerebras'
-      ? [
-          'llama-4-scout-17b-16e-instruct',
-          'llama3.1-8b',
-          'llama-3.3-70b',
-          'qwen-3-32b',
-          'llama-4-maverick-17b-128e-instruct',
-          'qwen-3-235b-a22b-instruct-2507',
-          'qwen-3-235b-a22b-thinking-2507',
-          'qwen-3-coder-480b',
-        ]
-      : prov === 'openrouter' ? [
-          'google/gemini-2.5-pro',
-          'openai/gpt-5',
-          'openai/gpt-5-mini',
-          'anthropic/claude-sonnet-4',
-          'x-ai/grok-4-fast:free',
-          'mistralai/mistral-small-3.2-24b-instruct:free',
-          'meta-llama/llama-4-maverick:free',
-          'meta-llama/llama-4-scout:free',
-        ] : ['gemini-2.5-flash'])
+    setSettings((s) => ({
+      ...s,
+      provider: prov,
+      model: prov === 'cerebras' ? CEREBRAS_MODELS[0] : prov === 'openrouter' ? OPENROUTER_MODELS[4] : 'gemini-2.5-flash',
+    }))
+    setProviderModels(prov === 'cerebras' ? CEREBRAS_MODELS : prov === 'openrouter' ? OPENROUTER_MODELS : ['gemini-2.5-flash'])
   }
 
   const save = () => {

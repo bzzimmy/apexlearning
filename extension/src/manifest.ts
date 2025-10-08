@@ -17,6 +17,13 @@ export default {
     service_worker: 'src/background/index.ts',
     type: 'module' as const,
   },
+  // Ensure the About page is packaged and accessible from the popup link
+  web_accessible_resources: [
+    {
+      resources: ['src/about/index.html'],
+      matches: ['<all_urls>'],
+    },
+  ],
   content_scripts: [
     // Early anti-cheat bypass hooks
     {
